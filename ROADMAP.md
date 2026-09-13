@@ -152,15 +152,24 @@ twice, producing `1.0` then a correctly-detected `1.1`. This is the first
 genuinely real, non-mocked run of the entire pipeline end-to-end (Copilot
 excepted — see Milestone 7).
 
-Known gaps, documented not guessed (see `worker/adapters/sharepoint/real.py`
-module docstring): Person/Group columns (`Owner`, `BusinessOwner`,
-`RequestedBy`, `CreatedBy`) are not populated — writing them via Graph
-needs a separate, unverified user-resolution call. `EnvironmentUrl`/
-`TechnicalDocumentationUrl`/`UserDocumentationUrl` were changed from
-"Hyperlink or Picture" to plain "Single line of text" after every
-attempted Graph write shape for the Hyperlink type failed (500 or 400,
-no useful detail) — documented as an unresolved Graph quirk, not silently
-worked around.
+✅ **Person/Group column writes implemented and verified** (follow-up
+session): `Owner`/`BusinessOwner`/`RequestedBy`/`CreatedBy` resolve an
+email to a SharePoint user id via the site's hidden "User Information
+List" (`GraphClient.find_user_lookup_id()`) and write
+`{ColumnName}LookupId` — confirmed against a real `Applications` item.
+Graceful, verified degradation: a person who has never visited the site
+isn't found (no Graph "ensure user" endpoint exists), and the field is
+silently omitted rather than failing the job. Read-back doesn't resolve
+the id back to an email (a display-only gap — nothing in the pipeline
+depends on it).
+
+Other known gaps, documented not guessed (see
+`worker/adapters/sharepoint/real.py` module docstring):
+`EnvironmentUrl`/`TechnicalDocumentationUrl`/`UserDocumentationUrl` were
+changed from "Hyperlink or Picture" to plain "Single line of text" after
+every attempted Graph write shape for the Hyperlink type failed (500 or
+400, no useful detail) — documented as an unresolved Graph quirk, not
+silently worked around.
 
 🔒 Still blocked on the **company's actual tenant** (this was all verified
 against a personal test tenant) and a decision on the worker's long-term

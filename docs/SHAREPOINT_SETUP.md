@@ -99,12 +99,22 @@ quirks found and worked around, documented in
   plain "Single line of text" columns (`sharepoint/lists/Applications.json`
   updated to match) rather than continuing to guess.
 
-Not yet resolved: **Person/Group column writes** (`Owner`, `BusinessOwner`,
-`RequestedBy`, `CreatedBy`). Writing a Person value via Graph needs the
-person resolved to a SharePoint user id first — an extra, unverified call
-sequence. `RealSharePointAdapter` currently leaves these fields unset on
-write (harmless: none of the provisioned columns are marked
-server-side "required").
+**Person/Group column writes — now implemented and verified (2026-09).**
+`GraphClient.find_user_lookup_id()` queries the site's hidden "User
+Information List" (`GET /sites/{id}/lists?$filter=displayName eq 'User
+Information List'`, then filtering its items by `fields/EMail eq
+'<email>'`) to resolve an email to a SharePoint user id, then
+`RealSharePointAdapter` writes `{ColumnName}LookupId` (e.g.
+`OwnerLookupId`) — confirmed against a real `Applications` item. The real
+caveat, also verified: a person who has never visited this specific
+SharePoint site doesn't exist in that list yet, and no Graph "ensure user
+ahead of time" endpoint was found — resolution then returns `None` and
+`RealSharePointAdapter` silently omits that field rather than failing the
+write (a job requester who's never opened the site is an expected case,
+not an error). Read-back does not resolve `{Column}LookupId` back to an
+email — `Owner`/`BusinessOwner`/`RequestedBy`/`CreatedBy` read as empty
+strings even when set; nothing in the pipeline depends on reading these
+back, so this is a display-only gap, not a functional one.
 
 ## Permissions
 

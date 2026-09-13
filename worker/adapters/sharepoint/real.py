@@ -9,15 +9,25 @@ CRUD reuses the same Graph auth pattern
 
 Known gaps (documented, not guessed):
 
-- **Person/Group columns are not populated.** Writing a Person value via
-  Graph requires resolving the person to a SharePoint user id first (a
-  separate, unverified call sequence) — ``Owner``, ``BusinessOwner``,
-  ``RequestedBy``, and ``CreatedBy`` are left unset by this adapter for
-  now. None of the provisioned columns are marked server-side "required"
+- **Person/Group columns are written, with a graceful-degradation caveat.**
+  Verified (2026-09, real tenant): resolving an email to a SharePoint user
+  id via the hidden "User Information List"
+  (``GraphClient.find_user_lookup_id()``) and writing
+  ``{ColumnName}LookupId`` works. The caveat: a person who has never
+  visited this specific SharePoint site doesn't exist in that list yet,
+  and no Graph "ensure user ahead of time" endpoint was found — if
+  resolution fails, the field is silently left unset rather than failing
+  the job (a job requester/owner who's never opened the site is a normal,
+  expected case, not an error). Read-back does not resolve
+  ``{Column}LookupId`` back to an email (would need one extra Graph call
+  per person field per read) — ``Owner``/``BusinessOwner``/
+  ``RequestedBy``/``CreatedBy`` read as empty strings even when set; this
+  is a display-only gap, nothing in the pipeline depends on reading these
+  back. None of the provisioned columns are marked server-side "required"
   (see ``scripts/provision_sharepoint_graph.py`` — the `required` flag
   from ``sharepoint/lists/*.json`` was intentionally not mapped into the
-  Graph column payload for exactly this reason), so this does not block
-  writes.
+  Graph column payload for exactly this reason), so an unresolved person
+  field does not block the write.
 - **``EnvironmentUrl``/``TechnicalDocumentationUrl``/``UserDocumentationUrl``
   are plain "Single line of text" columns, not "Hyperlink or Picture."**
   Empirically (2026-09, real tenant): writing a Graph ``hyperlinkOrPicture``
@@ -200,6 +210,20 @@ class RealSharePointAdapter(SharePointAdapter):
         items = self._graph.list_items(self._list_id(JOBS_LIST), filter_expr=f"fields/Title eq '{job_id}'")
         return items[0] if items else None
 
+    def _resolve_person_fields(self, emails_by_column: dict[str, str]) -> dict:
+        """Resolve each ``{ColumnName: email}`` pair to
+        ``{ColumnNameLookupId: <SharePoint user id>}``, silently dropping
+        any that don't resolve (see module docstring "Known gaps") — never
+        raises, since an unresolved person is an expected, non-fatal case."""
+        resolved = {}
+        for column, email in emails_by_column.items():
+            if not email:
+                continue
+            user_id = self._graph.find_user_lookup_id(email)
+            if user_id is not None:
+                resolved[f"{column}LookupId"] = user_id
+        return resolved
+
     # --- Applications --------------------------------------------------------
     def get_application(self, application_id: str) -> Application | None:
         item = self._find_application_item(application_id)
@@ -212,6 +236,7 @@ class RealSharePointAdapter(SharePointAdapter):
     def upsert_application(self, application: Application) -> None:
         existing = self._find_application_item(application.application_id)
         fields = _application_to_fields(application)
+        fields.update(self._resolve_person_fields({"Owner": application.owner, "BusinessOwner": application.business_owner}))
         if existing:
             self._graph.update_item_fields(self._list_id(APPLICATIONS_LIST), existing["id"], fields)
         else:
@@ -225,6 +250,7 @@ class RealSharePointAdapter(SharePointAdapter):
         # back, not via the SharePoint Lookup relationship, until Person/
         # lookup field writes are verified end-to-end.
         fields = _job_to_fields(job)
+        fields.update(self._resolve_person_fields({"RequestedBy": job.requested_by}))
         item = self._graph.create_item(self._list_id(JOBS_LIST), fields)
         # Store application_id alongside the job via a job-scoped artifact,
         # since it isn't in a plain field on DocumentationJobs by design
@@ -300,7 +326,9 @@ class RealSharePointAdapter(SharePointAdapter):
         return versions[-1] if versions else None
 
     def create_version_record(self, version: DocumentationVersion) -> None:
-        self._graph.create_item(self._list_id(VERSIONS_LIST), _version_to_fields(version))
+        fields = _version_to_fields(version)
+        fields.update(self._resolve_person_fields({"CreatedBy": version.created_by}))
+        self._graph.create_item(self._list_id(VERSIONS_LIST), fields)
 
     def get_snapshot(self, application_id: str, version: str) -> dict | None:
         application = self.get_application(application_id)

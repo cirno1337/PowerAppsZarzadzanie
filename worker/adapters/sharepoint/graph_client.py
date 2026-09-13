@@ -37,6 +37,7 @@ class GraphClient:
         self.site_url = site_url
         self._token: str | None = None
         self._site_id: str | None = None
+        self._user_info_list_id: str | None = None
 
     def _get_token(self) -> str:
         if self._token:
@@ -86,6 +87,28 @@ class GraphClient:
         if not values:
             raise GraphError(f"List '{display_name}' not found on {self.site_url}")
         return values[0]["id"]
+
+    def find_user_lookup_id(self, email: str) -> str | None:
+        """Resolve ``email`` to its item id in the site's hidden "User
+        Information List" — this is the value a Person/Group column's
+        ``{ColumnName}LookupId`` write field expects (verified 2026-09,
+        real tenant).
+
+        Returns ``None`` if the user isn't found. This can legitimately
+        happen for a user who has never visited this specific SharePoint
+        site — SharePoint only adds someone to this list on their first
+        visit, and no Graph "ensure user ahead of time" endpoint was found
+        during verification (see docs/SHAREPOINT_SETUP.md). Callers must
+        treat ``None`` as "skip this field", not as an error.
+        """
+        list_id = self._user_information_list_id()
+        items = self.list_items(list_id, filter_expr=f"fields/EMail eq '{email}'")
+        return items[0]["id"] if items else None
+
+    def _user_information_list_id(self) -> str:
+        if self._user_info_list_id is None:
+            self._user_info_list_id = self.find_list_id("User Information List")
+        return self._user_info_list_id
 
     def list_items(self, list_id: str, filter_expr: str | None = None) -> list[dict]:
         params = {"expand": "fields"}

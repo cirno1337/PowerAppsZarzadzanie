@@ -233,9 +233,11 @@ upload_document(app_id: str, version: str, filename: str, content: str | bytes) 
 - `RealSharePointAdapter` — **IMPLEMENTED on Microsoft Graph, verified
   end-to-end against a real personal test tenant** (2026-09), including a
   full real `JobProcessor` pipeline run (see `ROADMAP.md` Milestone 6).
-  Known gaps: Person/Group columns unpopulated; three URL columns are
-  plain text rather than "Hyperlink or Picture" (an unresolved Graph
-  write quirk). **REQUIRES CORPORATE ACCESS** to verify against the
+  Person/Group column writes are implemented (resolved via the site's
+  User Information List, gracefully degrading for a person who's never
+  visited the site). Known gap: three URL columns are plain text rather
+  than "Hyperlink or Picture" (an unresolved Graph write quirk).
+  **REQUIRES CORPORATE ACCESS** to verify against the
   company's actual tenant and decide the worker's long-term (narrower)
   service identity — see `docs/SHAREPOINT_SETUP.md` and
   `docs/CORPORATE_SETUP.md`.

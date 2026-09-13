@@ -16,13 +16,18 @@ _FILTER_RE = re.compile(r"fields/(\w+) eq '([^']*)'")
 
 
 class FakeGraphClient:
-    def __init__(self):
+    def __init__(self, known_users: dict[str, str] | None = None):
         self._next_id = 1
         self.items: dict[str, dict[str, dict]] = {APPLICATIONS_LIST: {}, JOBS_LIST: {}, VERSIONS_LIST: {}}
         self.files: dict[str, str] = {}
+        # email -> SharePoint user id, simulating who has "visited the site"
+        self.known_users: dict[str, str] = known_users or {}
 
     def find_list_id(self, display_name: str) -> str:
         return display_name  # identity mapping is enough for tests
+
+    def find_user_lookup_id(self, email: str) -> str | None:
+        return self.known_users.get(email)
 
     def list_items(self, list_id: str, filter_expr: str | None = None) -> list[dict]:
         items = list(self.items[list_id].values())
@@ -172,3 +177,55 @@ def test_get_snapshot_missing_returns_none(adapter):
 def test_job_artifact_roundtrip(adapter):
     adapter.upload_job_artifact("job-1", "prompt.md", "hello")
     assert adapter.read_job_artifact("job-1", "prompt.md") == "hello"
+
+
+def _adapter_with_known_user(email: str, user_id: str) -> RealSharePointAdapter:
+    real_adapter = RealSharePointAdapter.__new__(RealSharePointAdapter)
+    real_adapter._graph = FakeGraphClient(known_users={email: user_id})
+    real_adapter._list_ids = {}
+    return real_adapter
+
+
+def test_upsert_application_resolves_known_person_fields():
+    adapter = _adapter_with_known_user("owner@example.com", "42")
+    app = _application()
+    app.owner = "owner@example.com"
+    app.business_owner = "unknown@example.com"  # never "visited the site" in this fake
+
+    adapter.upsert_application(app)
+
+    stored_fields = adapter._graph.items[APPLICATIONS_LIST]["1"]["fields"]
+    assert stored_fields["OwnerLookupId"] == "42"
+    assert "BusinessOwnerLookupId" not in stored_fields  # unresolved -> silently skipped
+
+
+def test_upsert_application_with_no_owner_set_does_not_call_person_resolution(adapter):
+    # Application.owner defaults to "" -- must not attempt to resolve an
+    # empty string as if it were an email.
+    adapter.upsert_application(_application())
+    stored_fields = adapter._graph.items[APPLICATIONS_LIST]["1"]["fields"]
+    assert "OwnerLookupId" not in stored_fields
+
+
+def test_create_job_resolves_requested_by():
+    adapter = _adapter_with_known_user("requester@example.com", "7")
+    adapter.upsert_application(_application())
+    adapter.create_job(
+        Job(job_id="job-1", application_id="app-1", action=JobAction.DOCUMENT_APPLICATION, requested_by="requester@example.com")
+    )
+    stored_fields = adapter._graph.items[JOBS_LIST]["2"]["fields"]
+    assert stored_fields["RequestedByLookupId"] == "7"
+
+
+def test_create_version_record_resolves_created_by():
+    adapter = _adapter_with_known_user("author@example.com", "9")
+    adapter.upsert_application(_application())
+    adapter.create_version_record(
+        DocumentationVersion(
+            application_id="app-1", version="1.0", previous_version=None, change_summary="", documentation_impact="",
+            snapshot_path="", diff_path="", technical_documentation_path="", user_documentation_path="",
+            created_by="author@example.com",
+        )
+    )
+    stored_fields = adapter._graph.items[VERSIONS_LIST]["2"]["fields"]
+    assert stored_fields["CreatedByLookupId"] == "9"
