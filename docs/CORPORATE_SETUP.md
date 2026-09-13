@@ -74,14 +74,33 @@ pac solution unpack --zipfile ./export/<solution>.zip --folder ./unpacked
 `pac admin` environment-lifecycle command, anything under `pac data` that
 writes. This project's worker never needs these.
 
-- [ ] `pac` CLI installed and version confirmed
-- [ ] Authenticated against a real, non-production environment
-- [ ] `pac solution list` succeeds and shows an expected solution
-- [ ] `pac solution export` + `pac solution unpack` succeed against that
-      solution
-- [ ] Actual unpacked folder structure compared against what
-      `worker/normalization/normalizer.py` currently assumes (update it if
-      different)
+- [x] `pac` CLI installed and version confirmed — done against a
+      **personal test tenant** (2026-09), not the company tenant: `pac`
+      2.12.2 via `dotnet tool install --global Microsoft.PowerApps.CLI.Tool`
+      (requires .NET SDK + the `aspnet-runtime` package on Linux — see
+      `docs/POWER_PLATFORM_SETUP.md`).
+- [x] Authenticated against a real, non-production environment — device
+      -code auth (`pac auth create --deviceCode`) confirmed to work well
+      for a headless/terminal session. Still REQUIRES CORPORATE ACCESS to
+      confirm which auth method (device code vs. service principal vs.
+      managed identity) the company allows for the worker's own
+      unattended, non-interactive use.
+- [x] `pac solution list` succeeds and shows expected solutions — done on
+      the personal test tenant.
+- [x] `pac solution export` + `pac solution unpack` succeed — done on the
+      personal test tenant against a small unmanaged test solution.
+- [x] Actual unpacked folder structure compared against what
+      `worker/normalization/normalizer.py` assumes — differs substantially
+      (real export is XML + Logic-Apps-style JSON, not flat JSON like the
+      mock fixtures). `RealPowerPlatformAdapter` +
+      `worker/adapters/powerplatform/xml_parsing.py` now implement real
+      parsing for solution metadata, flows, environment variables, and
+      connection references — see `docs/POWER_PLATFORM_SETUP.md` "Real
+      export structure — verified findings" for the full detail. Canvas
+      apps, tables, roles, and generic components remain unverified.
+- [ ] **Still required**: repeat the above against the actual **company**
+      tenant/environment once accessible, and confirm the worker's
+      unattended authentication method with whoever administers it.
 
 ---
 
@@ -163,21 +182,35 @@ Follow `docs/WORKER_SETUP.md`. In short:
 ## PHASE 7 — Copilot
 
 Follow `docs/COPILOT_INTEGRATION.md` in full — it has the complete
-verification checklist. Summary diagnostic steps:
+verification checklist, including a **real, verified finding (2026-09)**
+that programmatic invocation IS possible via the Copilot Studio Direct
+Line API (not the newer Microsoft 365 Agents SDK — that one doesn't
+support unattended/service-principal auth, which the worker needs). That
+finding was verified against Microsoft's own docs and structurally
+confirmed on a personal test tenant; it still needs re-confirming against
+the company's actual tenant/license (steps below).
+
+Summary diagnostic steps:
 
 1. **What Copilot license(s) does the company hold?** Check the Microsoft
    365 admin center → Billing → Licenses (or ask IT/procurement). Look
    specifically for Microsoft 365 Copilot seats vs. Copilot Studio capacity
-   — they're licensed and provisioned separately.
+   — they're licensed and provisioned separately. **Also check that it
+   isn't an expired/trial license** — a trial-expired state was found to
+   block the entire Channels configuration area (not just one channel) on
+   a personal test tenant; see `docs/COPILOT_INTEGRATION.md`.
 2. **Is Copilot Studio available?** Check
-   [make.powerva.microsoft.com](https://make.powerva.microsoft.com) (or the
-   current Copilot Studio URL — verify, product URLs change) for your
-   tenant. If you can create an agent there, Copilot Studio is available.
-3. **Is programmatic invocation possible?** Check current Microsoft Learn
-   documentation for Copilot Studio's supported publishing
-   channels/APIs — this is the single most important thing to verify,
-   and the most likely to have changed since this document was written.
-   Do not trust this document's product descriptions over current docs.
+   [copilotstudio.microsoft.com](https://copilotstudio.microsoft.com)
+   (current as of 2026-09; the older `make.powerva.microsoft.com` URL still
+   redirects there but verify, product URLs change) for your tenant. If you
+   can create/open an agent there, Copilot Studio is available.
+3. **Is programmatic invocation possible?** Open an existing (or new)
+   agent → **Channels** → **Native app**, and separately check
+   **Settings → Security → Web channel security**. If both are reachable
+   (not blocked by a trial/licensing gate) and show a connection
+   string/secrets, Direct Line invocation is available — this is the
+   single most important thing to verify, and confirms/refutes the
+   personal-tenant finding above for the *company's* tenant specifically.
 4. **Is MCP available?** Check current Microsoft documentation for MCP
    support in whichever Copilot product applies, and check tenant admin
    policy (an admin may need to enable it).

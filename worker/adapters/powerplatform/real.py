@@ -1,47 +1,49 @@
-"""REQUIRES CORPORATE ACCESS — real Power Platform CLI adapter placeholder.
+"""Real Power Platform CLI adapter.
 
-Do not implement the method bodies below based on assumptions. Follow
-``docs/CORPORATE_SETUP.md`` Phase 2 first to verify actual `pac` CLI
-behavior against a real, non-production environment, then replace the
-``NotImplementedError`` in each method with a ``subprocess`` call to `pac`,
-translating its output into the exact same return shapes
-``MockPowerPlatformAdapter`` produces so nothing above this adapter needs to
-change.
+Status per method — see ``docs/POWER_PLATFORM_SETUP.md`` "Real export
+structure — verified findings" for what was actually checked and how:
 
-Intended (unverified) command mapping, for reference only:
-
-    authenticate()             -> pac auth create --environment <url> [--applicationId ... --tenant ...]
-    list_solutions(env)        -> pac solution list --environment <url>
-    export_solution(...)       -> pac solution export --name <solution> --path <output_dir> --environment <url>
-    unpack_solution(pkg)       -> pac solution unpack --zipfile <pkg> --folder <dir>
-    get_solution_metadata(dir) -> parse <dir>/Other/Solution.xml
-    get_application_metadata() -> parse CanvasApps/*, Workflows/*, etc. under <dir>
+- ``authenticate``, ``list_solutions``, ``export_solution``,
+  ``unpack_solution``: **IMPLEMENTED**, shelling out to `pac` via
+  ``pac_cli.py``. Command shapes were verified interactively against a
+  real, non-production personal test tenant (2026-09) — see
+  ``docs/CORPORATE_SETUP.md`` Phase 2. Still REQUIRES CORPORATE ACCESS to
+  re-verify against the company's actual tenant/CLI version before trusting
+  this in production, and REQUIRES TENANT CONFIGURATION for the real
+  authentication method (device code was used for manual verification;
+  the worker's own unattended auth method — service principal vs. managed
+  identity — is still undecided, see SECURITY.md and
+  ``docs/CORPORATE_SETUP.md`` Phase 1).
+- ``get_solution_metadata``: **IMPLEMENTED** for the verified shape
+  (``Other/Solution.xml``).
+- ``get_application_metadata``: **PARTIALLY IMPLEMENTED**. Flows,
+  environment variables, and connection references are implemented and
+  verified against a real export. Canvas apps/screens, Dataverse tables,
+  security roles, and generic components are **NOT YET VERIFIED** against
+  a real export containing those — left as empty lists rather than
+  guessed. REQUIRES CORPORATE ACCESS (or further personal-tenant
+  exploration) with a solution containing a canvas app before those can be
+  implemented for real; see ``worker/adapters/powerplatform/xml_parsing.py``
+  for where to add them once verified.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from . import pac_cli, xml_parsing
 from .base import PowerPlatformAdapter
-
-_NOT_IMPLEMENTED = (
-    "RealPowerPlatformAdapter is a placeholder. It requires corporate network "
-    "access and a verified `pac` CLI workflow — see docs/CORPORATE_SETUP.md "
-    "Phase 2 before implementing this method."
-)
 
 
 class RealPowerPlatformAdapter(PowerPlatformAdapter):
-    """REQUIRES CORPORATE ACCESS. Not implemented — see module docstring."""
-
     def __init__(self, environment_url: str):
         self.environment_url = environment_url
 
     def authenticate(self) -> None:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        pac_cli.auth_create(self.environment_url)
 
     def list_solutions(self, environment: str) -> list[str]:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        return pac_cli.solution_list(environment)
 
     def export_solution(
         self,
@@ -50,13 +52,62 @@ class RealPowerPlatformAdapter(PowerPlatformAdapter):
         output_dir: Path,
         version: str | None = None,
     ) -> Path:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        # `version` is a mock-only convenience (see base.py) — a real export
+        # always returns whatever is currently deployed; there is no way to
+        # time-travel a real environment, so it's accepted for interface
+        # compatibility and otherwise ignored here.
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = output_dir / f"{solution_name}.zip"
+        return pac_cli.solution_export(solution_name, environment, zip_path)
 
     def unpack_solution(self, package_path: Path) -> Path:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        package_path = Path(package_path)
+        target_dir = package_path.parent / package_path.stem
+        return pac_cli.solution_unpack(package_path, target_dir)
 
     def get_solution_metadata(self, unpacked_dir: Path) -> dict:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        unpacked_dir = Path(unpacked_dir)
+        return xml_parsing.parse_solution_manifest(unpacked_dir / "Other" / "Solution.xml")
 
     def get_application_metadata(self, unpacked_dir: Path) -> dict:
-        raise NotImplementedError(_NOT_IMPLEMENTED)
+        unpacked_dir = Path(unpacked_dir)
+
+        flows = []
+        for flow_path in xml_parsing.find_flow_files(unpacked_dir / "Workflows"):
+            flow_json = _read_json(flow_path)
+            flows.append(xml_parsing.parse_flow_definition(flow_json, name=_flow_display_name(flow_path)))
+
+        return {
+            # NOT YET VERIFIED against a real canvas-app-containing export —
+            # see module docstring.
+            "applications": [],
+            "flows": flows,
+            "tables": [],
+            "environment_variables": xml_parsing.parse_environment_variables(
+                unpacked_dir / "environmentvariabledefinitions"
+            ),
+            "connection_references": xml_parsing.parse_connection_references(
+                unpacked_dir / "Other" / "Customizations.xml"
+            ),
+            "dependencies": [],
+            "security": {"roles": []},
+            "components": [],
+        }
+
+
+def _read_json(path: Path) -> dict:
+    import json
+
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _flow_display_name(flow_path: Path) -> str:
+    # Real filenames look like "Button-Getitems-<guid>.json" — strip the
+    # trailing "-<guid>.json" to recover a name close to the flow's display
+    # name. Not guaranteed identical to the display name shown in the
+    # maker portal; good enough for diffing purposes, which only need
+    # stability across exports of the same flow, not a perfect match.
+    stem = flow_path.stem
+    parts = stem.rsplit("-", 1)
+    return parts[0] if len(parts) == 2 and len(parts[1]) >= 8 else stem

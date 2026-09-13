@@ -105,11 +105,18 @@ get_application_metadata(unpacked_dir: Path) -> dict
 - `MockPowerPlatformAdapter` — **MOCKED**. Reads directly from
   `examples/mock_solution/<AppName>/<version>/`, treating each version
   directory as an already-unpacked export. No zip handling needed.
-- `RealPowerPlatformAdapter` — **REQUIRES CORPORATE ACCESS**. Placeholder
-  that documents the intended `pac` CLI commands per method
-  (`pac auth create`, `pac solution list`, `pac solution export`,
-  `pac solution unpack`, ...) but raises `NotImplementedError` until
-  exercised against a real environment. See `docs/POWER_PLATFORM_SETUP.md`.
+- `RealPowerPlatformAdapter` — **PARTIALLY IMPLEMENTED**. Shells out to a
+  real `pac` CLI (`worker/adapters/powerplatform/pac_cli.py`) for
+  authenticate/list/export/unpack, and parses the real export structure
+  (`worker/adapters/powerplatform/xml_parsing.py`) for solution metadata,
+  flows, environment variables, and connection references — all verified
+  interactively against a real, non-production **personal test tenant**
+  (2026-09; see `docs/POWER_PLATFORM_SETUP.md`). Canvas apps, tables,
+  security roles, and generic components remain unverified (empty lists,
+  not guessed). **REQUIRES CORPORATE ACCESS** to verify against the actual
+  company tenant before production use — the personal-tenant verification
+  proves the CLI/export-format facts, not the company's specific
+  environment/permissions/auth method.
 
 ### Normalization (`worker/normalization/`)
 
@@ -190,7 +197,10 @@ generate_change_summary(diff: dict) -> str
   ready-to-run prompt file, sets job `Status = NEEDS_HUMAN_REVIEW`, and
   resumes when given a pasted-back result via `ingest_human_result()`.
 - `RealCopilotAdapter` — **REQUIRES LICENSING VERIFICATION**. Placeholder
-  only; see `docs/COPILOT_INTEGRATION.md`.
+  only; the mechanism (Copilot Studio Direct Line API + a secret — not the
+  newer Microsoft 365 Agents SDK, which lacks unattended service-principal
+  auth) is identified and documented, not yet implemented. See
+  `docs/COPILOT_INTEGRATION.md`.
 
 ### Documentation Engine (`worker/documentation/generator.py`)
 

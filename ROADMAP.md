@@ -78,11 +78,29 @@ run-tests.sh` runs 62 passing tests covering every item below.
   if/when the repo is pushed to a Git host; ask before adding, since it
   touches CI/CD config per the destructive-action guidance.
 
-## Milestone 5 — Real Power Platform CLI integration 🔒
+## Milestone 5 — Real Power Platform CLI integration 🚧 partially complete
 
-🔒 Blocked on corporate access. Tracked in `docs/CORPORATE_SETUP.md` Phase 2.
-Implements `RealPowerPlatformAdapter` against a real, non-production
-environment first.
+🚧 `pac` CLI installed and verified interactively against a real,
+non-production **personal test tenant** (2026-09) — see
+`docs/POWER_PLATFORM_SETUP.md` "Real export structure — verified
+findings" and `docs/CORPORATE_SETUP.md` Phase 2. `RealPowerPlatformAdapter`
+now shells out to `pac` for `authenticate`/`list_solutions`/
+`export_solution`/`unpack_solution` (`worker/adapters/powerplatform/
+pac_cli.py`), and parses the real, verified export structure for
+`get_solution_metadata` and part of `get_application_metadata` (flows,
+environment variables, connection references —
+`worker/adapters/powerplatform/xml_parsing.py`, unit tested against
+synthetic fixtures mirroring the verified shape).
+
+⏳ Still open: canvas apps/screens, Dataverse tables, security roles, and
+generic components in `get_application_metadata` are **NOT YET VERIFIED**
+against a real export (left as empty lists, not guessed — see
+`worker/adapters/powerplatform/real.py` module docstring). 🔒 Full
+production verification against the **company's actual tenant** (not the
+personal test tenant used above) is still blocked on corporate access —
+the personal-tenant verification proves the CLI/format facts but not the
+company's specific environment names, permissions, or auth method (see
+`docs/CORPORATE_SETUP.md` Phase 1).
 
 ## Milestone 6 — Real SharePoint integration 🔒
 
@@ -90,11 +108,26 @@ environment first.
 another supported approach), made only after `docs/CORPORATE_SETUP.md`
 Phase 1/3 are complete.
 
-## Milestone 7 — Real Copilot integration 🔒
+## Milestone 7 — Real Copilot integration 🚧 mechanism identified, not implemented
 
-🔒 Blocked on licensing verification. Tracked in
-`docs/COPILOT_INTEGRATION.md`. May resolve to "human-in-the-loop is the
-permanent mode" rather than a programmatic adapter — that is an acceptable
+🚧 The programmatic mechanism is now identified and documented with real
+verification, not guessed: **Copilot Studio Direct Line API with a secret**
+(not the newer Microsoft 365 Agents SDK, which doesn't support unattended
+service-principal auth). Verified against official Microsoft Learn docs
+and structurally confirmed against a real personal test tenant (Web
+channel security page, secrets, the "Require secured access" toggle) — see
+`docs/COPILOT_INTEGRATION.md` "Verified finding" and "Follow-up after
+extending the trial". A full end-to-end message exchange was deliberately
+not completed (would require handling a real secret, which stays out of
+any chat/agent conversation per SECURITY.md).
+
+🔒 Still blocked on: the company's actual Copilot Studio license/capacity
+(not the personal test tenant), and building/deploying a purpose-built
+agent for documentation generation. `RealCopilotAdapter` remains an
+unimplemented placeholder — implement it per the "Implementation note" in
+`docs/COPILOT_INTEGRATION.md` once the company tenant is available. May
+still resolve to "human-in-the-loop is the permanent mode" if the company
+tenant's licensing doesn't support this — that remains an acceptable
 outcome, not a failure state.
 
 ## Milestone 8 — Production deployment 🔒
