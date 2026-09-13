@@ -196,10 +196,13 @@ generate_change_summary(diff: dict) -> str
   human + real Copilot access to actually produce refined content. Writes a
   ready-to-run prompt file, sets job `Status = NEEDS_HUMAN_REVIEW`, and
   resumes when given a pasted-back result via `ingest_human_result()`.
-- `RealCopilotAdapter` — **REQUIRES LICENSING VERIFICATION**. Placeholder
-  only; the mechanism (Copilot Studio Direct Line API + a secret — not the
-  newer Microsoft 365 Agents SDK, which lacks unattended service-principal
-  auth) is identified and documented, not yet implemented. See
+- `RealCopilotAdapter` — **IMPLEMENTED, REQUIRES LICENSING/CAPACITY
+  VERIFICATION** for production use. Uses the Copilot Studio Direct Line
+  API + a secret (not the newer Microsoft 365 Agents SDK, which lacks
+  unattended service-principal auth). Structurally verified against a
+  personal test tenant; a full message round-trip is currently blocked by
+  that tenant's Copilot Studio billing/capacity (publish disabled with a
+  billing error) — a tenant/procurement issue, not a code issue. See
   `docs/COPILOT_INTEGRATION.md`.
 
 ### Documentation Engine (`worker/documentation/generator.py`)

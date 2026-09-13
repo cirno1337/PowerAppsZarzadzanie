@@ -149,6 +149,38 @@ behalf), the Channels page opened fully. Concrete findings:
   Direct Line channel and demo website are currently open to anyone who
   knows the agent ID, with no secret required).
 
+### ⚠️ Second blocker found: publishing requires resolved billing/capacity
+
+After adding real instructions to the test agent and attempting to
+**Publish** it (required for Direct Line to serve anything other than the
+maker's own test-chat draft), Copilot Studio showed: *"Wystąpił problem z
+rozliczeniami. Skontaktuj się z administratorem, aby potwierdzić możliwość
+rozliczania dla tego środowiska i agenta."* ("There was a billing issue.
+Contact your administrator to confirm billing capability for this
+environment and agent.") with the **Publish button disabled** — this is a
+**different** blocker than the earlier expired-trial one (which only
+gated the Channels *configuration* UI). This one gates actual **runtime
+capacity** (Copilot Credits billing/consumption), independent of whether
+channels are configured.
+
+Empirical confirmation (`RealCopilotAdapter`'s own Direct Line client,
+`worker/adapters/copilot/direct_line.py`, run against the real secret):
+`generate_token()` **succeeds** (the secret itself is valid and the Direct
+Line front door recognizes it), but starting a conversation and reading
+activities immediately **fails with HTTP 404** — the bot backend isn't
+actually running because it was never successfully published. So: a valid
+secret is not sufficient; the agent must be successfully published, which
+in turn requires the tenant to have working Copilot Credits billing
+(a prepaid subscription, pay-as-you-go via an Azure billing policy, or
+equivalent) — not just an active (non-expired) license, per the earlier
+finding.
+
+**For the company tenant**: confirm during Phase 7 that Copilot Studio
+billing/capacity is actually provisioned (not just that a license exists)
+before assuming publish + Direct Line will work — ask whoever manages the
+company's Copilot Studio subscription specifically about this, since it's
+a distinct thing from license assignment.
+
 **What was deliberately NOT done, and why:** the actual secret value was
 never retrieved (no "Copy" click, no attempt to read it from the page DOM —
 one such attempt, for the *connection parameters* string, was

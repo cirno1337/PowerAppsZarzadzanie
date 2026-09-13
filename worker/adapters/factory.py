@@ -11,8 +11,10 @@ from __future__ import annotations
 from worker.adapters.copilot.base import CopilotAdapter
 from worker.adapters.copilot.human_review import HumanReviewCopilotAdapter
 from worker.adapters.copilot.mock import MockCopilotAdapter
+from worker.adapters.copilot.real import RealCopilotAdapter
 from worker.adapters.powerplatform.base import PowerPlatformAdapter
 from worker.adapters.powerplatform.mock import MockPowerPlatformAdapter
+from worker.adapters.powerplatform.real import RealPowerPlatformAdapter
 from worker.adapters.sharepoint.base import SharePointAdapter
 from worker.adapters.sharepoint.mock import MockSharePointAdapter
 from worker.config import WorkerConfig
@@ -21,7 +23,10 @@ from worker.config import WorkerConfig
 def build_powerplatform_adapter(config: WorkerConfig) -> PowerPlatformAdapter:
     if config.powerplatform_mode == "mock":
         return MockPowerPlatformAdapter(config.mock_solutions_dir)
-    config.require_real_config_or_raise("PPDM_POWERPLATFORM_MODE", config.powerplatform_mode)
+    if config.powerplatform_mode == "real":
+        if not config.powerplatform_environment_url:
+            raise ValueError("PPDM_POWERPLATFORM_ENVIRONMENT_URL must be set for PPDM_POWERPLATFORM_MODE=real")
+        return RealPowerPlatformAdapter(environment_url=config.powerplatform_environment_url)
     raise ValueError(f"Unknown PPDM_POWERPLATFORM_MODE: {config.powerplatform_mode}")
 
 
@@ -37,5 +42,6 @@ def build_copilot_adapter(config: WorkerConfig, sharepoint: SharePointAdapter) -
         return MockCopilotAdapter()
     if config.copilot_mode == "human_review":
         return HumanReviewCopilotAdapter(artifact_writer=sharepoint.upload_job_artifact)
-    config.require_real_config_or_raise("PPDM_COPILOT_MODE", config.copilot_mode)
+    if config.copilot_mode == "real":
+        return RealCopilotAdapter()
     raise ValueError(f"Unknown PPDM_COPILOT_MODE: {config.copilot_mode}")

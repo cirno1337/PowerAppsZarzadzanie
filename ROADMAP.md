@@ -121,27 +121,38 @@ provisioning) and a decision on the worker's own long-term service
 identity (narrower than the `Sites.Manage.All` used for one-off
 provisioning).
 
-## Milestone 7 — Real Copilot integration 🚧 mechanism identified, not implemented
+## Milestone 7 — Real Copilot integration 🚧 implemented, blocked on tenant billing
 
-🚧 The programmatic mechanism is now identified and documented with real
-verification, not guessed: **Copilot Studio Direct Line API with a secret**
-(not the newer Microsoft 365 Agents SDK, which doesn't support unattended
-service-principal auth). Verified against official Microsoft Learn docs
-and structurally confirmed against a real personal test tenant (Web
-channel security page, secrets, the "Require secured access" toggle) — see
-`docs/COPILOT_INTEGRATION.md` "Verified finding" and "Follow-up after
-extending the trial". A full end-to-end message exchange was deliberately
-not completed (would require handling a real secret, which stays out of
-any chat/agent conversation per SECURITY.md).
+🚧 `RealCopilotAdapter` (`worker/adapters/copilot/real.py`) is now fully
+**IMPLEMENTED**: it builds the same prompt `HumanReviewCopilotAdapter`
+uses, sends it via a real Direct Line client
+(`worker/adapters/copilot/direct_line.py` — token exchange, conversation,
+message post, watermark-based polling for the reply), and parses the
+agent's delimited reply back into technical doc / user guide / change
+summary. 18 new unit tests, all passing, using a mocked `requests`/
+`direct_line` — no real tenant dependency for the test suite. Not the
+newer Microsoft 365 Agents SDK — confirmed unsuitable since it lacks
+unattended service-principal auth (see `docs/COPILOT_INTEGRATION.md`).
 
-🔒 Still blocked on: the company's actual Copilot Studio license/capacity
-(not the personal test tenant), and building/deploying a purpose-built
-agent for documentation generation. `RealCopilotAdapter` remains an
-unimplemented placeholder — implement it per the "Implementation note" in
-`docs/COPILOT_INTEGRATION.md` once the company tenant is available. May
-still resolve to "human-in-the-loop is the permanent mode" if the company
-tenant's licensing doesn't support this — that remains an acceptable
-outcome, not a failure state.
+An agent on the personal test tenant was given real instructions matching
+`RealCopilotAdapter`'s expected reply format, and a real Direct Line
+secret was configured (by the tenant owner, via their own local `.env` —
+never seen by Claude).
+
+🔒 **Blocked on the tenant's Copilot Studio billing/capacity, not code**:
+publishing the agent (required for Direct Line to serve anything beyond
+the maker's own draft test chat) is disabled with a billing error on this
+tenant. Empirically confirmed with `RealCopilotAdapter`'s own client:
+token generation succeeds (the secret is valid) but starting a
+conversation 404s, because the bot isn't actually running unpublished.
+This is a distinct blocker from the earlier expired-trial one (that gated
+configuration UI; this gates runtime capacity) — see
+`docs/COPILOT_INTEGRATION.md` "Second blocker found". Resolving it is a
+billing/procurement action for whoever administers the tenant, not
+something to work around in code. May still resolve to "human-in-the-loop
+is the permanent mode" if the company tenant's Copilot Studio capacity
+doesn't support this — that remains an acceptable outcome, not a failure
+state.
 
 ## Milestone 8 — Production deployment 🔒
 

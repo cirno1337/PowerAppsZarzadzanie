@@ -10,6 +10,9 @@ dev = ["pytest>=7.0"]
 # Only needed to run scripts/provision_sharepoint_graph.py once against a
 # real tenant -- not a runtime dependency of the worker itself.
 provisioning = ["msal>=1.28", "requests>=2.31"]
+# Only needed when PPDM_COPILOT_MODE=real (RealCopilotAdapter's Direct
+# Line HTTP calls). The mock/human_review paths have zero dependencies.
+real = ["requests>=2.31"]
 
 [tool.pytest.ini_options]
 testpaths = ["worker/tests"]
