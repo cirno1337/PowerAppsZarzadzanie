@@ -102,24 +102,66 @@ the personal-tenant verification proves the CLI/format facts but not the
 company's specific environment names, permissions, or auth method (see
 `docs/CORPORATE_SETUP.md` Phase 1).
 
-## Milestone 6 — Real SharePoint integration 🚧 provisioning verified, adapter not implemented
+✅ **Capstone validation**: ran the full `JobProcessor` pipeline with this
+adapter (plus `RealSharePointAdapter`, see Milestone 6) end-to-end twice
+against the real tenant — real export → unpack → normalize → diff →
+version bump → doc generation → real SharePoint save, `COMPLETED` both
+times. Found and fixed three real bugs this only surfaces against a real
+`pac` CLI (all now covered by regression tests):
+- `job_processor.py` was passing `Application.environment` (a label) to
+  `export_solution()` instead of `Application.environment_url`, which
+  `pac` actually needs.
+- `authenticate()` always ran `pac auth create` (a fresh login) instead of
+  reusing an existing matching auth profile — would hang a headless
+  worker waiting on an interactive login with nowhere to complete. Fixed
+  with `pac_cli.ensure_authenticated()` (`pac auth list` + `pac auth
+  select`, falling back to `pac auth create` only if no profile matches).
+- `pac solution export` errors if the output path already exists (no
+  overwrite by default) — breaks idempotent re-runs/retries. Fixed by
+  passing `--overwrite`.
+- Flow display names retained part of the GUID (`rsplit("-", 1)` doesn't
+  fully strip a real GUID, which contains its own internal hyphens) —
+  fixed with a proper trailing-GUID regex.
 
-🚧 Client library decided and verified: **Microsoft Graph** (app-only auth).
-`scripts/provision_sharepoint_graph.py` successfully created a real site,
-all 4 lists with exact columns (incl. the cross-list lookup), and the
-document library + folders end-to-end against a personal test tenant
-(2026-09) — see `docs/SHAREPOINT_SETUP.md` and `docs/CORPORATE_SETUP.md`
-Phase 3.
+## Milestone 6 — Real SharePoint integration ✅ implemented and verified end-to-end (personal test tenant)
 
-⏳ `RealSharePointAdapter` itself (`worker/adapters/sharepoint/real.py`) is
-still a full `NotImplementedError` placeholder — the provisioning script
-proves Graph access/permissions work, but job/version CRUD, claim_job's
-concurrency handling, and document upload against Graph are not yet
-implemented. 🔒 Full production verification still blocked on the
-company's actual tenant (not the personal test tenant used for
-provisioning) and a decision on the worker's own long-term service
-identity (narrower than the `Sites.Manage.All` used for one-off
-provisioning).
+✅ `RealSharePointAdapter` (`worker/adapters/sharepoint/real.py`) is fully
+implemented on Microsoft Graph (app-only auth,
+`worker/adapters/sharepoint/graph_client.py`) and verified against a real
+site: application registry, job queue (create/claim/idempotent-reject/
+update/get_pending), version history (create/list/sort/latest), and
+document library upload/read — all proven via a live smoke test, not just
+unit tests against a fake (35 unit tests total across both files, all
+against a fake Graph client; separately, a live run against the real site
+exercised every method for real). `claim_job` uses SharePoint's
+`@odata.etag` for optimistic concurrency (an `If-Match` conditional PATCH)
+— the mechanism `docs/SHAREPOINT_SETUP.md` called for.
+
+**Capstone result**: ran the full `JobProcessor` pipeline —
+register → create job → claim → **real `pac` CLI export/unpack** → real
+XML/JSON parsing → normalize → diff against the previous **real** stored
+snapshot → impact → version bump → generate docs (mock Copilot) →
+**real** SharePoint save (snapshot/diff/docs to the document library,
+`Applications`/`DocumentationVersions` list updates) → job `COMPLETED` —
+twice, producing `1.0` then a correctly-detected `1.1`. This is the first
+genuinely real, non-mocked run of the entire pipeline end-to-end (Copilot
+excepted — see Milestone 7).
+
+Known gaps, documented not guessed (see `worker/adapters/sharepoint/real.py`
+module docstring): Person/Group columns (`Owner`, `BusinessOwner`,
+`RequestedBy`, `CreatedBy`) are not populated — writing them via Graph
+needs a separate, unverified user-resolution call. `EnvironmentUrl`/
+`TechnicalDocumentationUrl`/`UserDocumentationUrl` were changed from
+"Hyperlink or Picture" to plain "Single line of text" after every
+attempted Graph write shape for the Hyperlink type failed (500 or 400,
+no useful detail) — documented as an unresolved Graph quirk, not silently
+worked around.
+
+🔒 Still blocked on the **company's actual tenant** (this was all verified
+against a personal test tenant) and a decision on the worker's long-term
+service identity — the `Sites.Manage.All` app registration used here is
+appropriate for one-off setup, not as the production worker's permanent
+credential (see SECURITY.md "Least privilege").
 
 ## Milestone 7 — Real Copilot integration 🚧 implemented, blocked on tenant billing
 

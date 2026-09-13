@@ -65,33 +65,54 @@ still occurs, record the actual internal name here:
 |---|---|
 | _(none identified yet — verify after first provisioning run)_ | |
 
-## Claim/idempotency semantics for the real adapter
+## Claim/idempotency semantics — IMPLEMENTED and verified
 
-`MockSharePointAdapter.claim_job()` does a read-modify-write against a local
-JSON file, which is atomic enough for a single mock process but is **not**
-a substitute for real concurrency control. `RealSharePointAdapter.claim_job()`
-must use SharePoint's optimistic concurrency (an `If-Match: <etag>`
-conditional update, or Graph API's equivalent) so that if two worker
-instances race to claim the same job, only one update succeeds and the
-other observes a conflict and moves on. Verify the exact mechanism against
-whichever client library is chosen (see below) before implementing.
+`RealSharePointAdapter.claim_job()` (`worker/adapters/sharepoint/real.py`)
+uses SharePoint's optimistic concurrency: it reads the job item's
+`@odata.etag` and issues a conditional `PATCH` with `If-Match: <etag>`. If
+another worker claimed the job first, the etag no longer matches and the
+conditional update fails, which `claim_job()` treats as "already claimed"
+(returns `False`) rather than raising. This was exercised in a live smoke
+test (a second `claim_job()` call on an already-claimed job correctly
+returned `False`), but a genuine concurrent-write race (two workers
+claiming at the *same instant*) has not been reproduced — the logic is
+correct per Graph's documented ETag semantics, not empirically raced.
 
-## Client library choice — NOT decided yet
+## Client library — DECIDED and verified: Microsoft Graph
 
-Do not pick a library before corporate access allows verifying what's
-actually available/permitted. Candidates to evaluate once you have access:
+**Microsoft Graph** (`/sites/{site-id}/lists/{list-id}/items`, app-only
+auth via `msal`) is what `RealSharePointAdapter` uses
+(`worker/adapters/sharepoint/graph_client.py`), verified end-to-end
+against a real personal test tenant — including a full real
+`JobProcessor` pipeline run (see `ROADMAP.md` Milestone 6). Two real Graph
+quirks found and worked around, documented in
+`worker/adapters/sharepoint/real.py`'s module docstring:
 
-- **Microsoft Graph API** (`/sites/{site-id}/lists/{list-id}/items`) via
-  `msgraph-sdk` (Python) — likely the most future-proof, standard approach.
-- A SharePoint REST API wrapper — viable if Graph access isn't granted for
-  some reason.
+- List-item writes with an explicit `null` for an unset `dateTime` field
+  return an opaque `500` — omit unset fields from the write payload
+  entirely instead (`_drop_none()` in `real.py`).
+- Writing a "Hyperlink or Picture" column via the list-items API failed
+  with every shape tried (plain string, and the documented
+  `{"Url": ..., "Description": ...}` object, in both Pascal and lowercase
+  key casing) — root cause not identified. Worked around by changing
+  `EnvironmentUrl`/`TechnicalDocumentationUrl`/`UserDocumentationUrl` to
+  plain "Single line of text" columns (`sharepoint/lists/Applications.json`
+  updated to match) rather than continuing to guess.
 
-Whichever is chosen, `RealSharePointAdapter` (see
-`worker/adapters/sharepoint/real.py`) must implement the exact
-`SharePointAdapter` interface so nothing above it changes.
+Not yet resolved: **Person/Group column writes** (`Owner`, `BusinessOwner`,
+`RequestedBy`, `CreatedBy`). Writing a Person value via Graph needs the
+person resolved to a SharePoint user id first — an extra, unverified call
+sequence. `RealSharePointAdapter` currently leaves these fields unset on
+write (harmless: none of the provisioned columns are marked
+server-side "required").
 
 ## Permissions
 
-See SECURITY.md "Least privilege". The worker's service account/app
-registration needs Contribute (read+write items, read+write files) on this
-one site's lists and library — nothing tenant-wide.
+**Used for one-off provisioning/verification so far**: an app registration
+with Microsoft Graph **Application permission** `Sites.Manage.All` (admin
+consent granted) — broader than the production worker should run as
+long-term. See SECURITY.md "Least privilege": narrow this once corporate
+access allows setting up a dedicated, minimally-scoped service identity
+(Contribute on this one site's lists/library only — evaluate `Sites.Selected`
+for the company tenant, which grants access to only the specific site
+rather than every site in the tenant).

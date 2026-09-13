@@ -230,9 +230,15 @@ upload_document(app_id: str, version: str, filename: str, content: str | bytes) 
 - `MockSharePointAdapter` — **MOCKED**. Backs all of the above with local
   JSON files (`.local_data/lists/*.json`) and a local mirror of the document
   library (`.local_data/PowerPlatformDocumentation/...`), git-ignored.
-- `RealSharePointAdapter` — **REQUIRES CORPORATE ACCESS** +
-  **REQUIRES TENANT CONFIGURATION**. Placeholder only; see
-  `docs/SHAREPOINT_SETUP.md` and `docs/CORPORATE_SETUP.md`.
+- `RealSharePointAdapter` — **IMPLEMENTED on Microsoft Graph, verified
+  end-to-end against a real personal test tenant** (2026-09), including a
+  full real `JobProcessor` pipeline run (see `ROADMAP.md` Milestone 6).
+  Known gaps: Person/Group columns unpopulated; three URL columns are
+  plain text rather than "Hyperlink or Picture" (an unresolved Graph
+  write quirk). **REQUIRES CORPORATE ACCESS** to verify against the
+  company's actual tenant and decide the worker's long-term (narrower)
+  service identity — see `docs/SHAREPOINT_SETUP.md` and
+  `docs/CORPORATE_SETUP.md`.
 
 ## Job lifecycle
 

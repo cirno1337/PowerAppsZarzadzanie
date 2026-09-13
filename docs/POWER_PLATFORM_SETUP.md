@@ -212,3 +212,32 @@ than a bare number.
 structure, security roles, and a managed (vs. unmanaged) export's
 differences — do this against a real canvas app solution before finishing
 `RealPowerPlatformAdapter`.
+
+### Capstone: full real pipeline run (2026-09) — three more real bugs found
+
+`RealPowerPlatformAdapter` was run through the complete `JobProcessor`
+pipeline (together with `RealSharePointAdapter`, see
+`docs/SHAREPOINT_SETUP.md`) against the real personal test tenant, twice
+— `COMPLETED` both times, correctly producing version `1.0` then `1.1`.
+Three real bugs surfaced only by actually running this (all fixed, all now
+covered by regression tests — see `ROADMAP.md` Milestone 5 for the fourth,
+in `job_processor.py`):
+
+1. **`authenticate()` always ran `pac auth create`**, which starts a
+   *fresh* login — harmless when run interactively once, but would hang a
+   headless worker indefinitely if an auth profile for the environment
+   already exists (as it will, in steady-state operation). Fixed with
+   `pac_cli.ensure_authenticated()`: check `pac auth list` for a profile
+   already pointed at the target environment and `pac auth select` it;
+   only fall back to `pac auth create` if none exists.
+2. **`pac solution export` fails if the output path already exists** (no
+   overwrite by default) — breaks any re-run using the same export
+   directory (a retry, or a later `UPDATE_DOCUMENTATION` job for the same
+   solution). Fixed by passing `--overwrite` — the export is a disposable
+   working file, not a retained artifact, so overwriting it is safe.
+3. **Flow display names retained part of the GUID.** Real workflow
+   filenames look like `Button-Getitems-53E8B648-3F25-EE11-9965-6045BD0D0CC5.json`
+   — the GUID itself contains internal hyphens, so the original
+   `rsplit("-", 1)` only stripped the last hyphen segment
+   (`6045BD0D0CC5`), leaving most of the GUID in the "name" used for
+   diffing. Fixed with a regex matching the full 8-4-4-4-12 GUID pattern.

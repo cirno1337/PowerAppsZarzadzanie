@@ -29,6 +29,7 @@ structure — verified findings" for what was actually checked and how:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from . import pac_cli, xml_parsing
@@ -40,7 +41,7 @@ class RealPowerPlatformAdapter(PowerPlatformAdapter):
         self.environment_url = environment_url
 
     def authenticate(self) -> None:
-        pac_cli.auth_create(self.environment_url)
+        pac_cli.ensure_authenticated(self.environment_url)
 
     def list_solutions(self, environment: str) -> list[str]:
         return pac_cli.solution_list(environment)
@@ -102,12 +103,18 @@ def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+_TRAILING_GUID_RE = re.compile(r"-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
+
+
 def _flow_display_name(flow_path: Path) -> str:
-    # Real filenames look like "Button-Getitems-<guid>.json" — strip the
-    # trailing "-<guid>.json" to recover a name close to the flow's display
-    # name. Not guaranteed identical to the display name shown in the
-    # maker portal; good enough for diffing purposes, which only need
-    # stability across exports of the same flow, not a perfect match.
+    # Real filenames look like "Button-Getitems-<guid>.json", where <guid>
+    # is a full 8-4-4-4-12 hex GUID containing its own internal hyphens —
+    # a naive rsplit("-", 1) only strips the last hyphen segment and
+    # leaves most of the GUID behind (found empirically running this
+    # against a real export — see docs/POWER_PLATFORM_SETUP.md). Strip the
+    # whole trailing GUID with a regex instead. Not guaranteed identical
+    # to the display name shown in the maker portal; good enough for
+    # diffing purposes, which only need stability across exports of the
+    # same flow, not a perfect match.
     stem = flow_path.stem
-    parts = stem.rsplit("-", 1)
-    return parts[0] if len(parts) == 2 and len(parts[1]) >= 8 else stem
+    return _TRAILING_GUID_RE.sub("", stem)

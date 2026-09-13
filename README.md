@@ -65,7 +65,7 @@ unimplemented placeholder pending licensing verification — see
 |---|---|
 | Normalization, diff engine, impact analysis, versioning, documentation generation, job processing (retries/idempotency) | **IMPLEMENTED** — real logic, tested |
 | Power Platform CLI integration | **MOCKED** for local dev; real adapter **IMPLEMENTED** and verified against a real (personal, non-production) tenant export — canvas apps/tables/roles still unverified. REQUIRES CORPORATE ACCESS to verify against the actual company tenant |
-| SharePoint integration | **MOCKED** for local dev. List/library **provisioning verified** against a real tenant via Microsoft Graph (`scripts/provision_sharepoint_graph.py`); the runtime `RealSharePointAdapter` (job/version CRUD) is still an unimplemented placeholder. REQUIRES CORPORATE ACCESS |
+| SharePoint integration | **MOCKED** for local dev; real adapter **IMPLEMENTED** on Microsoft Graph and verified end-to-end against a real (personal, non-production) tenant — including a full real pipeline run. REQUIRES CORPORATE ACCESS to verify against the company tenant |
 | Copilot integration | **MOCKED** + **human-in-the-loop implemented** for local dev; real adapter **IMPLEMENTED** (Direct Line API) but blocked end-to-end by a test tenant's Copilot Studio billing/capacity, not by code — see `docs/COPILOT_INTEGRATION.md`. REQUIRES LICENSING VERIFICATION against the company tenant |
 | Power Apps / Power Automate | **Design artifacts only** (`powerapps/`, `powerautomate/`) — no environment exists to build/publish them yet |
 

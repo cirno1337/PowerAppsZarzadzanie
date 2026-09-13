@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from worker.adapters.powerplatform import pac_cli
-from worker.adapters.powerplatform.real import RealPowerPlatformAdapter
+from worker.adapters.powerplatform.real import RealPowerPlatformAdapter, _flow_display_name
 
 SOLUTION_XML = """<?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml>
@@ -32,8 +32,24 @@ def _build_fake_unpacked_dir(tmp_path: Path) -> Path:
     (unpacked / "Other").mkdir(parents=True)
     (unpacked / "Other" / "Solution.xml").write_text(SOLUTION_XML, encoding="utf-8")
     (unpacked / "Workflows").mkdir()
-    (unpacked / "Workflows" / "Example-Flow-ABCDEF01.json").write_text(json.dumps(FLOW_JSON), encoding="utf-8")
+    # Real filenames carry a full 8-4-4-4-12 GUID (with its own internal
+    # hyphens) -- this fixture matches that shape deliberately, since a
+    # shorter fake GUID previously hid a real bug in name extraction.
+    (unpacked / "Workflows" / "Example-Flow-53E8B648-3F25-EE11-9965-6045BD0D0CC5.json").write_text(
+        json.dumps(FLOW_JSON), encoding="utf-8"
+    )
     return unpacked
+
+
+def test_flow_display_name_strips_full_guid_with_internal_hyphens():
+    # Regression test: found by running this adapter against a real
+    # export, where a naive rsplit("-", 1) left most of the GUID behind.
+    path = Path("Button-Getitems-53E8B648-3F25-EE11-9965-6045BD0D0CC5.json")
+    assert _flow_display_name(path) == "Button-Getitems"
+
+
+def test_flow_display_name_leaves_non_guid_names_unchanged():
+    assert _flow_display_name(Path("Plain-Flow-Name.json")) == "Plain-Flow-Name"
 
 
 def test_get_solution_metadata_uses_real_xml_parser(tmp_path):
@@ -60,9 +76,9 @@ def test_get_application_metadata_parses_flows_from_workflows_dir(tmp_path):
     assert metadata["security"] == {"roles": []}
 
 
-def test_authenticate_delegates_to_pac_cli(monkeypatch):
+def test_authenticate_delegates_to_ensure_authenticated(monkeypatch):
     captured = {}
-    monkeypatch.setattr(pac_cli, "auth_create", lambda url: captured.setdefault("url", url))
+    monkeypatch.setattr(pac_cli, "ensure_authenticated", lambda url: captured.setdefault("url", url))
     adapter = RealPowerPlatformAdapter(environment_url="https://example.crm.dynamics.com")
     adapter.authenticate()
     assert captured["url"] == "https://example.crm.dynamics.com"

@@ -70,17 +70,24 @@ class WorkerConfig:
         default_factory=lambda: os.environ.get("PPDM_POWERPLATFORM_ENVIRONMENT_URL", "")
     )
 
+    # App registration used by RealSharePointAdapter's app-only Graph auth
+    # (client credentials flow) — see docs/SHAREPOINT_SETUP.md. Never a
+    # value the worker's own long-term service identity should share with
+    # a one-off provisioning credential; narrow this once corporate access
+    # allows setting up production-scoped permissions.
+    sharepoint_tenant_id: str = field(
+        default_factory=lambda: os.environ.get("PPDM_SHAREPOINT_TENANT_ID", "")
+    )
+    sharepoint_client_id: str = field(
+        default_factory=lambda: os.environ.get("PPDM_SHAREPOINT_CLIENT_ID", "")
+    )
+    sharepoint_client_secret: str = field(
+        default_factory=lambda: os.environ.get("PPDM_SHAREPOINT_CLIENT_SECRET", "")
+    )
+
     verbose_logging: bool = field(
         default_factory=lambda: _env_bool("PPDM_VERBOSE_LOGGING", False)
     )
-
-    def require_real_config_or_raise(self, mode_name: str, mode_value: str) -> None:
-        if mode_value == "real":
-            raise NotImplementedError(
-                f"{mode_name} is set to 'real' but the real adapter is a "
-                "placeholder pending corporate access/licensing verification. "
-                "See docs/CORPORATE_SETUP.md and docs/COPILOT_INTEGRATION.md."
-            )
 
 
 def load_config() -> WorkerConfig:

@@ -15,6 +15,7 @@ from worker.adapters.copilot.real import RealCopilotAdapter
 from worker.adapters.powerplatform.mock import MockPowerPlatformAdapter
 from worker.adapters.powerplatform.real import RealPowerPlatformAdapter
 from worker.adapters.sharepoint.mock import MockSharePointAdapter
+from worker.adapters.sharepoint.real import RealSharePointAdapter
 from worker.config import WorkerConfig
 
 
@@ -58,9 +59,18 @@ def test_mock_sharepoint_adapter_built_for_mock_mode(tmp_path):
     assert isinstance(build_sharepoint_adapter(config), MockSharePointAdapter)
 
 
-def test_real_sharepoint_adapter_still_not_implemented():
-    # RealSharePointAdapter genuinely isn't implemented yet -- this should
-    # keep failing loudly until it is, not silently return a mock.
-    config = _config(sharepoint_mode="real")
-    with pytest.raises(NotImplementedError):
+def test_real_sharepoint_adapter_built_for_real_mode_with_full_config():
+    config = _config(
+        sharepoint_mode="real",
+        sharepoint_tenant_id="tenant",
+        sharepoint_client_id="client",
+        sharepoint_client_secret="secret",
+        sharepoint_site_url="https://example.sharepoint.com/sites/Test",
+    )
+    assert isinstance(build_sharepoint_adapter(config), RealSharePointAdapter)
+
+
+def test_real_sharepoint_adapter_requires_full_config():
+    config = _config(sharepoint_mode="real")  # tenant/client/secret/site_url all blank
+    with pytest.raises(ValueError, match="PPDM_SHAREPOINT_MODE=real requires"):
         build_sharepoint_adapter(config)

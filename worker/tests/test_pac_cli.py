@@ -77,6 +77,51 @@ def test_auth_create_builds_expected_command(monkeypatch):
     assert captured["args"] == ["pac", "auth", "create", "--environment", "https://example.crm.dynamics.com"]
 
 
+AUTH_LIST_OUTPUT = """Index Active Kind      Name Friendly Name                   Url                                 User                                     Cloud  Type
+[1]   *      UNIVERSAL      Personal Productivity (Default) https://x.crm.dynamics.com/         user@contoso.onmicrosoft.com             Public User
+[2]                         Some Other Env                  https://y.crm4.dynamics.com/        user@contoso.onmicrosoft.com             Public User
+"""
+
+
+def test_find_auth_profile_index_matches_by_url(monkeypatch):
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _FakeCompletedProcess(stdout=AUTH_LIST_OUTPUT))
+    assert pac_cli.find_auth_profile_index("https://y.crm4.dynamics.com/") == "2"
+    assert pac_cli.find_auth_profile_index("https://y.crm4.dynamics.com") == "2"  # trailing slash tolerant
+
+
+def test_find_auth_profile_index_returns_none_when_not_found(monkeypatch):
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _FakeCompletedProcess(stdout=AUTH_LIST_OUTPUT))
+    assert pac_cli.find_auth_profile_index("https://nowhere.crm.dynamics.com/") is None
+
+
+def test_ensure_authenticated_reuses_existing_profile(monkeypatch):
+    captured = {"calls": []}
+
+    def fake_run(args, **kwargs):
+        captured["calls"].append(args)
+        return _FakeCompletedProcess(stdout=AUTH_LIST_OUTPUT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    pac_cli.ensure_authenticated("https://y.crm4.dynamics.com/")
+
+    assert captured["calls"][0] == ["pac", "auth", "list"]
+    assert captured["calls"][1] == ["pac", "auth", "select", "--index", "2"]
+
+
+def test_ensure_authenticated_creates_new_profile_when_none_matches(monkeypatch):
+    captured = {"calls": []}
+
+    def fake_run(args, **kwargs):
+        captured["calls"].append(args)
+        return _FakeCompletedProcess(stdout=AUTH_LIST_OUTPUT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    pac_cli.ensure_authenticated("https://nowhere.crm.dynamics.com/")
+
+    assert captured["calls"][0] == ["pac", "auth", "list"]
+    assert captured["calls"][1] == ["pac", "auth", "create", "--environment", "https://nowhere.crm.dynamics.com/"]
+
+
 def test_solution_export_builds_expected_command(monkeypatch, tmp_path):
     captured = {}
     monkeypatch.setattr(subprocess, "run", _capturing_run(captured))
@@ -96,6 +141,7 @@ def test_solution_export_builds_expected_command(monkeypatch, tmp_path):
         str(output_path),
         "--managed",
         "false",
+        "--overwrite",
     ]
 
 
