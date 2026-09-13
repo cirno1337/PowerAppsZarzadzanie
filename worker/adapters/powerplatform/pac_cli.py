@@ -136,7 +136,14 @@ def solution_export(solution_name: str, environment_url: str, output_path: Path)
 
 def solution_unpack(zip_path: Path, target_dir: Path) -> Path:
     """Unpack an exported solution zip into ``target_dir``. Local
-    filesystem only — does not touch the environment."""
+    filesystem only — does not touch the environment.
+
+    NOTE: `--overwrite` is NOT a valid flag for this subcommand (found
+    empirically — passing it makes `pac` silently print usage help instead
+    of erroring or unpacking). Unlike `solution_export`, re-running this
+    against an existing `target_dir` is not verified to be safe/idempotent;
+    callers should use a fresh directory per attempt if that matters.
+    """
     _run(
         [
             "solution",
@@ -150,3 +157,22 @@ def solution_unpack(zip_path: Path, target_dir: Path) -> Path:
         ]
     )
     return target_dir
+
+
+def canvas_unpack(msapp_path: Path, sources_dir: Path, layout: str = "Experimental") -> Path:
+    """Unpack a canvas app's `.msapp` file into readable sources
+    (`CanvasManifest.json` + `Src/<Screen>.fx.yaml` per screen, under the
+    `Experimental` layout).
+
+    Verified (2026-09) against real canvas apps on a personal test tenant
+    — but only apps with ``MSAppStructureVersion`` below 2.4.0.
+    `--layout Experimental` is what worked for those; `pac` recommends the
+    newer `--layout SourceCode` for apps at or above that version, but no
+    available test app met that minimum, so ``SourceCode``'s actual output
+    shape is UNVERIFIED — do not assume it matches `Experimental`'s
+    `CanvasManifest.json`/`Src/*.fx.yaml` shape without checking against a
+    real newer app first. `xml_parsing.parse_canvas_app_screens()` assumes
+    the `Experimental` shape.
+    """
+    _run(["canvas", "unpack", "--msapp", str(msapp_path), "--sources", str(sources_dir), "--layout", layout])
+    return sources_dir

@@ -4,6 +4,7 @@ these run without a real Copilot Studio agent or secret."""
 from __future__ import annotations
 
 import pytest
+import requests
 
 from worker.adapters.copilot import direct_line
 
@@ -26,7 +27,7 @@ def test_generate_token_sends_secret_as_bearer(monkeypatch):
         captured["headers"] = headers
         return _FakeResponse(json_data={"token": "tok", "conversationId": "conv1", "expires_in": 3600})
 
-    monkeypatch.setattr(direct_line.requests, "post", fake_post)
+    monkeypatch.setattr(requests, "post", fake_post)
     result = direct_line.generate_token("my-secret")
 
     assert result == {"token": "tok", "conversationId": "conv1", "expires_in": 3600}
@@ -35,7 +36,7 @@ def test_generate_token_sends_secret_as_bearer(monkeypatch):
 
 
 def test_generate_token_raises_on_failure(monkeypatch):
-    monkeypatch.setattr(direct_line.requests, "post", lambda *a, **k: _FakeResponse(status_code=401))
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _FakeResponse(status_code=401))
     with pytest.raises(direct_line.DirectLineError):
         direct_line.generate_token("bad-secret")
 
@@ -48,7 +49,7 @@ def test_post_message_builds_expected_payload(monkeypatch):
         captured["json"] = json
         return _FakeResponse()
 
-    monkeypatch.setattr(direct_line.requests, "post", fake_post)
+    monkeypatch.setattr(requests, "post", fake_post)
     direct_line.post_message("tok", "conv1", "hello", from_id="worker")
 
     assert captured["url"] == f"{direct_line.DIRECTLINE_BASE}/conversations/conv1/activities"

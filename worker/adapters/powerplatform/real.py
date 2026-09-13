@@ -17,14 +17,19 @@ structure — verified findings" for what was actually checked and how:
 - ``get_solution_metadata``: **IMPLEMENTED** for the verified shape
   (``Other/Solution.xml``).
 - ``get_application_metadata``: **PARTIALLY IMPLEMENTED**. Flows,
-  environment variables, and connection references are implemented and
-  verified against a real export. Canvas apps/screens, Dataverse tables,
-  security roles, and generic components are **NOT YET VERIFIED** against
-  a real export containing those — left as empty lists rather than
-  guessed. REQUIRES CORPORATE ACCESS (or further personal-tenant
-  exploration) with a solution containing a canvas app before those can be
-  implemented for real; see ``worker/adapters/powerplatform/xml_parsing.py``
-  for where to add them once verified.
+  environment variables, connection references, and canvas apps/screens
+  are implemented and verified against real exports — including a live
+  run against two real canvas apps (2026-09), correctly extracting screen
+  and control names (canvas apps only verified for
+  `MSAppStructureVersion` below 2.4.0 — see
+  ``worker/adapters/powerplatform/pac_cli.py canvas_unpack()`` for the
+  `SourceCode`-layout gap). Dataverse tables, security roles, and generic
+  components are **NOT YET VERIFIED** against a real export containing
+  those — left as empty lists rather than guessed. REQUIRES CORPORATE
+  ACCESS (or further personal-tenant exploration) with a solution
+  containing those before they can be implemented for real; see
+  ``worker/adapters/powerplatform/xml_parsing.py`` for where to add them
+  once verified.
 """
 
 from __future__ import annotations
@@ -80,9 +85,7 @@ class RealPowerPlatformAdapter(PowerPlatformAdapter):
             flows.append(xml_parsing.parse_flow_definition(flow_json, name=_flow_display_name(flow_path)))
 
         return {
-            # NOT YET VERIFIED against a real canvas-app-containing export —
-            # see module docstring.
-            "applications": [],
+            "applications": self._get_canvas_apps(unpacked_dir),
             "flows": flows,
             "tables": [],
             "environment_variables": xml_parsing.parse_environment_variables(
@@ -95,6 +98,30 @@ class RealPowerPlatformAdapter(PowerPlatformAdapter):
             "security": {"roles": []},
             "components": [],
         }
+
+    def _get_canvas_apps(self, unpacked_dir: Path) -> list[dict]:
+        applications = []
+        for meta_path in xml_parsing.find_canvas_app_meta_files(unpacked_dir):
+            meta = xml_parsing.parse_canvas_app_meta(meta_path)
+            msapp_path = unpacked_dir / meta["document_uri"].lstrip("/")
+            screens: list[dict] = []
+            if msapp_path.exists():
+                sources_dir = unpacked_dir / "_canvas_src" / meta["name"]
+                try:
+                    pac_cli.canvas_unpack(msapp_path, sources_dir)
+                    screens = xml_parsing.parse_canvas_app_screens(sources_dir)
+                except pac_cli.PacCliError:
+                    # E.g. an MSAppStructureVersion below what `--layout
+                    # Experimental` supports, or above it needing the
+                    # unverified `SourceCode` layout (see pac_cli.py
+                    # canvas_unpack() docstring). Degrade to an app entry
+                    # with no screens rather than failing the whole job
+                    # over one unparseable canvas app.
+                    screens = []
+            applications.append(
+                {"name": meta["display_name"] or meta["name"], "type": "canvas", "screens": screens}
+            )
+        return applications
 
 
 def _read_json(path: Path) -> dict:

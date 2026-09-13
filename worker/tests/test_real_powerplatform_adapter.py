@@ -69,11 +69,67 @@ def test_get_application_metadata_parses_flows_from_workflows_dir(tmp_path):
     assert len(metadata["flows"]) == 1
     assert metadata["flows"][0]["name"] == "Example-Flow"
     assert metadata["flows"][0]["trigger"] == "manual"
-    # Not yet verified against a real canvas app / table / role export —
+    # This fixture has no CanvasApps/ folder, so no canvas apps to find.
+    # Tables/security roles are not yet verified against a real export —
     # see worker/adapters/powerplatform/real.py module docstring.
     assert metadata["applications"] == []
     assert metadata["tables"] == []
     assert metadata["security"] == {"roles": []}
+
+
+CANVAS_APP_META_XML = """<?xml version="1.0" encoding="utf-8"?>
+<CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>new_exampleapp_a2eff</Name>
+  <DisplayName>Example App</DisplayName>
+  <DocumentUri>/CanvasApps/new_exampleapp_a2eff_DocumentUri.msapp</DocumentUri>
+</CanvasApp>
+"""
+
+
+def test_get_application_metadata_includes_canvas_apps(tmp_path, monkeypatch):
+    unpacked = _build_fake_unpacked_dir(tmp_path)
+    canvas_dir = unpacked / "CanvasApps"
+    canvas_dir.mkdir()
+    (canvas_dir / "new_exampleapp_a2eff.meta.xml").write_text(CANVAS_APP_META_XML, encoding="utf-8")
+    (canvas_dir / "new_exampleapp_a2eff_DocumentUri.msapp").write_bytes(b"fake msapp contents")
+
+    def fake_canvas_unpack(msapp_path, sources_dir, layout="Experimental"):
+        sources_dir.mkdir(parents=True, exist_ok=True)
+        (sources_dir / "CanvasManifest.json").write_text(json.dumps({"ScreenOrder": ["Screen1"]}), encoding="utf-8")
+        (sources_dir / "Src").mkdir()
+        (sources_dir / "Src" / "Screen1.fx.yaml").write_text(
+            "Screen1 As screen:\n    Button1 As Button:\n        Text: =\"Go\"\n", encoding="utf-8"
+        )
+        return sources_dir
+
+    monkeypatch.setattr(pac_cli, "canvas_unpack", fake_canvas_unpack)
+    adapter = RealPowerPlatformAdapter(environment_url="https://example.crm.dynamics.com")
+    metadata = adapter.get_application_metadata(unpacked)
+
+    assert len(metadata["applications"]) == 1
+    app = metadata["applications"][0]
+    assert app["name"] == "Example App"
+    assert app["type"] == "canvas"
+    assert app["screens"] == [{"name": "Screen1", "controls_summary": "Button1 (Button)"}]
+
+
+def test_get_application_metadata_degrades_gracefully_on_unparseable_canvas_app(tmp_path, monkeypatch):
+    unpacked = _build_fake_unpacked_dir(tmp_path)
+    canvas_dir = unpacked / "CanvasApps"
+    canvas_dir.mkdir()
+    (canvas_dir / "new_exampleapp_a2eff.meta.xml").write_text(CANVAS_APP_META_XML, encoding="utf-8")
+    (canvas_dir / "new_exampleapp_a2eff_DocumentUri.msapp").write_bytes(b"fake msapp contents")
+
+    def failing_canvas_unpack(msapp_path, sources_dir, layout="Experimental"):
+        raise pac_cli.PacCliError("MSAppStructureVersion 2.0 is below the minimum supported version 2.4.0.")
+
+    monkeypatch.setattr(pac_cli, "canvas_unpack", failing_canvas_unpack)
+    adapter = RealPowerPlatformAdapter(environment_url="https://example.crm.dynamics.com")
+    metadata = adapter.get_application_metadata(unpacked)
+
+    # Degrades to an app entry with no screens rather than failing the
+    # whole job over one unparseable canvas app.
+    assert metadata["applications"] == [{"name": "Example App", "type": "canvas", "screens": []}]
 
 
 def test_authenticate_delegates_to_ensure_authenticated(monkeypatch):

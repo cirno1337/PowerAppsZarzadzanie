@@ -7,9 +7,21 @@ files/dicts (only file I/O is a plain read), so they're fully unit
 -testable with small synthetic fixtures that mimic the verified shape,
 without needing `pac` CLI or a live tenant.
 
-REQUIRES CORPORATE ACCESS to validate against a canvas-app-containing
-solution and a managed export — only an unmanaged solution containing
-flows/environment variables/connection references has been verified so far.
+Canvas app screen parsing (``parse_canvas_app_screens``) assumes the
+`Experimental` `pac canvas unpack` layout — see
+``worker/adapters/powerplatform/pac_cli.py canvas_unpack()`` for why the
+newer `SourceCode` layout's shape is unverified.
+
+REQUIRES CORPORATE ACCESS to validate against a managed export and a
+canvas app new enough for the `SourceCode` layout — neither was available
+on the personal test tenant used for this verification.
+
+``pyyaml`` is imported lazily (inside ``parse_screen_fx_yaml``) rather than
+at module level: this module is imported unconditionally by
+``worker/adapters/factory.py`` regardless of ``PPDM_POWERPLATFORM_MODE``,
+and the project's mock path must have zero third-party dependencies (see
+CLAUDE.md) — only actually parsing a canvas app (i.e. using
+``PPDM_POWERPLATFORM_MODE=real``) should require it to be installed.
 """
 
 from __future__ import annotations
@@ -199,3 +211,70 @@ def find_flow_files(workflows_dir: Path) -> list[Path]:
     if not workflows_dir.exists():
         return []
     return sorted(p for p in workflows_dir.glob("*.json") if not p.name.endswith(".data.xml"))
+
+
+def find_canvas_app_meta_files(unpacked_dir: Path) -> list[Path]:
+    """Return the per-app ``*.meta.xml`` files under ``CanvasApps/`` (one
+    per canvas app in the solution)."""
+    canvas_apps_dir = unpacked_dir / "CanvasApps"
+    if not canvas_apps_dir.exists():
+        return []
+    return sorted(canvas_apps_dir.glob("*.meta.xml"))
+
+
+def parse_canvas_app_meta(meta_xml_path: Path) -> dict:
+    """Parse a ``CanvasApps/<name>.meta.xml`` file into
+    ``{"name", "display_name", "document_uri"}``. ``document_uri`` is a
+    solution-relative path (e.g. ``/CanvasApps/<name>_DocumentUri.msapp``)
+    to the app's actual `.msapp` file."""
+    root = ET.parse(meta_xml_path).getroot()
+    return {
+        "name": root.findtext("Name") or "",
+        "display_name": root.findtext("DisplayName") or "",
+        "document_uri": root.findtext("DocumentUri") or "",
+    }
+
+
+def parse_screen_fx_yaml(yaml_text: str) -> dict:
+    """Parse one `Experimental`-layout ``Src/<Screen>.fx.yaml`` file into
+    ``{"name", "controls": [{"name", "type"}, ...]}``.
+
+    The file has exactly one top-level key of the form
+    ``"<ScreenName> As screen"``; each direct child key is one control, of
+    the form ``"<ControlName> As <ControlType>"``. This is genuine YAML
+    (parses with a standard safe loader) — verified against a real export;
+    not merely inferred from the Power Fx syntax highlighting."""
+    import yaml
+
+    data = yaml.safe_load(yaml_text) or {}
+    if not data:
+        return {"name": "", "controls": []}
+    screen_key, screen_body = next(iter(data.items()))
+    screen_name = screen_key.split(" As ")[0]
+    controls = []
+    if isinstance(screen_body, dict):
+        for control_key in screen_body:
+            control_name, _, control_type = control_key.partition(" As ")
+            controls.append({"name": control_name, "type": control_type or "Unknown"})
+    return {"name": screen_name, "controls": controls}
+
+
+def parse_canvas_app_screens(canvas_sources_dir: Path) -> list[dict]:
+    """Read a `pac canvas unpack --layout Experimental` output directory
+    and return normalized-schema-shaped screens:
+    ``[{"name", "controls_summary"}, ...]``, in the app's own
+    ``ScreenOrder``."""
+    manifest_path = canvas_sources_dir / "CanvasManifest.json"
+    if not manifest_path.exists():
+        return []
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    screens = []
+    for screen_name in manifest.get("ScreenOrder", []):
+        yaml_path = canvas_sources_dir / "Src" / f"{screen_name}.fx.yaml"
+        if not yaml_path.exists():
+            screens.append({"name": screen_name, "controls_summary": ""})
+            continue
+        parsed = parse_screen_fx_yaml(yaml_path.read_text(encoding="utf-8"))
+        controls_summary = ", ".join(f"{c['name']} ({c['type']})" for c in parsed["controls"])
+        screens.append({"name": parsed["name"] or screen_name, "controls_summary": controls_summary})
+    return screens

@@ -8,13 +8,18 @@ CORPORATE ACCESS to re-verify against the company's own tenant.
 Auth: app-only (client credentials), reading TENANT_ID/CLIENT_ID/
 CLIENT_SECRET from environment variables set by the caller — this module
 never logs their values. See docs/SHAREPOINT_SETUP.md.
+
+``requests`` and ``msal`` are imported lazily (inside the methods that need
+them) rather than at module level: this module is imported unconditionally
+by ``worker/adapters/factory.py`` regardless of ``PPDM_SHAREPOINT_MODE``,
+and the project's mock path must have zero third-party dependencies (see
+CLAUDE.md) — only actually using ``PPDM_SHAREPOINT_MODE=real`` should
+require them to be installed.
 """
 
 from __future__ import annotations
 
 from urllib.parse import urlparse
-
-import requests
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 GRAPH_APP_SCOPE = ["https://graph.microsoft.com/.default"]
@@ -62,6 +67,8 @@ class GraphClient:
         return self._site_id
 
     def request(self, method: str, path_or_url: str, **kwargs) -> dict | None:
+        import requests
+
         url = path_or_url if path_or_url.startswith("http") else f"{GRAPH}{path_or_url}"
         headers = kwargs.pop("headers", {})
         resp = requests.request(method, url, headers=self._headers(**headers), **kwargs)
@@ -113,7 +120,8 @@ class GraphClient:
         )
 
     def read_file(self, drive_path: str) -> str:
-        parsed = urlparse(self.site_url)
+        import requests
+
         url = f"{GRAPH}/sites/{self.site_id}/drive/root:/{drive_path}:/content"
         resp = requests.get(url, headers={"Authorization": f"Bearer {self._get_token()}"})
         if not resp.ok:

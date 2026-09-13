@@ -208,10 +208,44 @@ Learn's environment variable type reference) to populate the normalized
 schema's `environment_variables[].type` with something readable, rather
 than a bare number.
 
-**Not yet verified**: canvas app (`CanvasApps/*.json` / `.msapp`)
-structure, security roles, and a managed (vs. unmanaged) export's
-differences — do this against a real canvas app solution before finishing
-`RealPowerPlatformAdapter`.
+**Canvas app structure — now verified (2026-09)** against two real canvas
+apps. A canvas app in a solution export is `CanvasApps/<name>.meta.xml`
+(gives `Name`/`DisplayName`/`DocumentUri`) plus a `.msapp` binary (itself a
+nested zip) at that `DocumentUri`. The Power Platform CLI has a dedicated
+`pac canvas unpack --msapp <file> --sources <dir> --layout Experimental`
+command that extracts it into `CanvasManifest.json` (has `ScreenOrder`, an
+ordered list of screen names) plus one `Src/<ScreenName>.fx.yaml` per
+screen — genuine YAML, parseable with a standard loader, of the shape:
+
+```yaml
+<ScreenName> As screen:
+    <ControlName1> As <ControlType1>:
+        <PropertyName>: =<PowerFxExpression>
+    <ControlName2> As <ControlType2>:
+        ...
+```
+
+`worker/adapters/powerplatform/xml_parsing.py` (`parse_canvas_app_meta`,
+`parse_screen_fx_yaml`, `parse_canvas_app_screens`) implements this,
+verified end-to-end via `RealPowerPlatformAdapter.get_application_metadata()`
+against two real apps.
+
+**Important caveat**: both verified apps had `MSAppStructureVersion` 2.0,
+which is below the minimum (2.4.0) for `pac`'s newer, preferred
+`--layout SourceCode`. `pac` explicitly recommends `SourceCode` over the
+now-deprecated `Experimental` layout for apps that support it — but no
+app meeting that minimum was available on the personal test tenant used
+for this verification, so **`SourceCode`'s actual output shape is
+unverified** and may differ from the `CanvasManifest.json`/`Src/*.fx.yaml`
+shape documented above. `RealPowerPlatformAdapter` currently hard-codes
+`--layout Experimental` and catches `PacCliError` around the whole
+canvas-unpack-and-parse step, degrading to an app entry with no screens
+rather than failing the job — verify and extend this once a newer app is
+available to test against (re-check `pac canvas unpack help` for current
+layout guidance first; this is a fast-moving area of the CLI).
+
+**Not yet verified**: security roles, and a managed (vs. unmanaged)
+export's differences.
 
 ### Capstone: full real pipeline run (2026-09) — three more real bugs found
 

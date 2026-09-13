@@ -88,14 +88,19 @@ now shells out to `pac` for `authenticate`/`list_solutions`/
 `export_solution`/`unpack_solution` (`worker/adapters/powerplatform/
 pac_cli.py`), and parses the real, verified export structure for
 `get_solution_metadata` and part of `get_application_metadata` (flows,
-environment variables, connection references —
-`worker/adapters/powerplatform/xml_parsing.py`, unit tested against
-synthetic fixtures mirroring the verified shape).
+environment variables, connection references, and — as of a follow-up
+session — canvas apps/screens via `pac canvas unpack`, verified against
+two real apps — `worker/adapters/powerplatform/xml_parsing.py`, unit
+tested against synthetic fixtures mirroring the verified shape).
 
-⏳ Still open: canvas apps/screens, Dataverse tables, security roles, and
-generic components in `get_application_metadata` are **NOT YET VERIFIED**
-against a real export (left as empty lists, not guessed — see
-`worker/adapters/powerplatform/real.py` module docstring). 🔒 Full
+⏳ Still open: Dataverse tables, security roles, and generic components in
+`get_application_metadata` are **NOT YET VERIFIED** against a real export
+(left as empty lists, not guessed — see
+`worker/adapters/powerplatform/real.py` module docstring). Canvas apps
+using the newer `SourceCode` unpack layout (`MSAppStructureVersion` ≥
+2.4.0) are also unverified — only older apps were available to test
+against; `RealPowerPlatformAdapter` degrades gracefully (empty screens,
+not a job failure) if `pac canvas unpack` fails for any reason. 🔒 Full
 production verification against the **company's actual tenant** (not the
 personal test tenant used above) is still blocked on corporate access —
 the personal-tenant verification proves the CLI/format facts but not the

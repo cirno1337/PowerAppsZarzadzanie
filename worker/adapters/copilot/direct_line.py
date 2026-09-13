@@ -7,15 +7,23 @@ structurally confirmed on a personal test tenant, but has not been
 end-to-end tested against the company's own Copilot Studio agent.
 
 Pure HTTP functions (no secret handling beyond passing it straight into an
-Authorization header) so they're unit-testable by monkeypatching
-``requests``. The secret itself is never logged.
+Authorization header) so they're unit-testable by monkeypatching the real
+``requests`` module (tests do ``import requests; monkeypatch.setattr(requests,
+"post", ...)`` — this affects the same lazily-imported module object every
+function below fetches from ``sys.modules``). The secret itself is never
+logged.
+
+``requests`` is imported lazily inside each function rather than at module
+level: this module is imported unconditionally by
+``worker/adapters/factory.py`` regardless of ``PPDM_COPILOT_MODE``, and the
+project's mock/human-review paths must have zero third-party dependencies
+(see CLAUDE.md) — only actually calling one of these functions (i.e. using
+``PPDM_COPILOT_MODE=real``) should require ``requests`` to be installed.
 """
 
 from __future__ import annotations
 
 import time
-
-import requests
 
 DIRECTLINE_BASE = "https://directline.botframework.com/v3/directline"
 DEFAULT_HTTP_TIMEOUT_SECONDS = 30
@@ -30,6 +38,8 @@ class DirectLineError(RuntimeError):
 def generate_token(secret: str) -> dict:
     """POST /tokens/generate — exchange a Direct Line secret for a
     short-lived token + a fresh conversationId."""
+    import requests
+
     resp = requests.post(
         f"{DIRECTLINE_BASE}/tokens/generate",
         headers={"Authorization": f"Bearer {secret}"},
@@ -41,6 +51,8 @@ def generate_token(secret: str) -> dict:
 
 
 def post_message(token: str, conversation_id: str, text: str, from_id: str) -> None:
+    import requests
+
     resp = requests.post(
         f"{DIRECTLINE_BASE}/conversations/{conversation_id}/activities",
         headers={"Authorization": f"Bearer {token}"},
@@ -52,6 +64,8 @@ def post_message(token: str, conversation_id: str, text: str, from_id: str) -> N
 
 
 def get_activities(token: str, conversation_id: str, watermark: str | None = None) -> dict:
+    import requests
+
     params = {"watermark": watermark} if watermark else {}
     resp = requests.get(
         f"{DIRECTLINE_BASE}/conversations/{conversation_id}/activities",

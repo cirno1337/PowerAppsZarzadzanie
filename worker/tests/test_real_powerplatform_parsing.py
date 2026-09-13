@@ -11,11 +11,15 @@ from __future__ import annotations
 import json
 
 from worker.adapters.powerplatform.xml_parsing import (
+    find_canvas_app_meta_files,
     find_flow_files,
     friendly_connector_name,
+    parse_canvas_app_meta,
+    parse_canvas_app_screens,
     parse_connection_references,
     parse_environment_variables,
     parse_flow_definition,
+    parse_screen_fx_yaml,
     parse_solution_manifest,
 )
 
@@ -181,3 +185,83 @@ def test_find_flow_files_excludes_data_xml_siblings(tmp_path):
 
 def test_find_flow_files_missing_dir_returns_empty(tmp_path):
     assert find_flow_files(tmp_path / "nope") == []
+
+
+CANVAS_APP_META_XML = """<?xml version="1.0" encoding="utf-8"?>
+<CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>new_exampleapp_a2eff</Name>
+  <DisplayName>Example App</DisplayName>
+  <DocumentUri>/CanvasApps/new_exampleapp_a2eff_DocumentUri.msapp</DocumentUri>
+</CanvasApp>
+"""
+
+SCREEN_FX_YAML = """Screen1 As screen:
+    Gallery1 As Gallery:
+        Height: =400
+        Width: =600
+    Button1 As Button:
+        Text: ="Approve"
+        X: =10
+"""
+
+
+def test_find_canvas_app_meta_files(tmp_path):
+    canvas_dir = tmp_path / "CanvasApps"
+    canvas_dir.mkdir()
+    (canvas_dir / "new_exampleapp_a2eff.meta.xml").write_text(CANVAS_APP_META_XML, encoding="utf-8")
+    (canvas_dir / "new_exampleapp_a2eff_DocumentUri.msapp").write_bytes(b"fake zip contents")
+
+    result = find_canvas_app_meta_files(tmp_path)
+    assert [p.name for p in result] == ["new_exampleapp_a2eff.meta.xml"]
+
+
+def test_find_canvas_app_meta_files_missing_dir_returns_empty(tmp_path):
+    assert find_canvas_app_meta_files(tmp_path / "nope") == []
+
+
+def test_parse_canvas_app_meta(tmp_path):
+    meta_path = tmp_path / "app.meta.xml"
+    meta_path.write_text(CANVAS_APP_META_XML, encoding="utf-8")
+    result = parse_canvas_app_meta(meta_path)
+    assert result == {
+        "name": "new_exampleapp_a2eff",
+        "display_name": "Example App",
+        "document_uri": "/CanvasApps/new_exampleapp_a2eff_DocumentUri.msapp",
+    }
+
+
+def test_parse_screen_fx_yaml_extracts_screen_and_controls():
+    result = parse_screen_fx_yaml(SCREEN_FX_YAML)
+    assert result["name"] == "Screen1"
+    assert result["controls"] == [
+        {"name": "Gallery1", "type": "Gallery"},
+        {"name": "Button1", "type": "Button"},
+    ]
+
+
+def test_parse_screen_fx_yaml_empty_text_returns_empty():
+    assert parse_screen_fx_yaml("") == {"name": "", "controls": []}
+
+
+def test_parse_canvas_app_screens(tmp_path):
+    (tmp_path / "CanvasManifest.json").write_text(
+        json.dumps({"ScreenOrder": ["Screen1"]}), encoding="utf-8"
+    )
+    src_dir = tmp_path / "Src"
+    src_dir.mkdir()
+    (src_dir / "Screen1.fx.yaml").write_text(SCREEN_FX_YAML, encoding="utf-8")
+
+    screens = parse_canvas_app_screens(tmp_path)
+    assert screens == [{"name": "Screen1", "controls_summary": "Gallery1 (Gallery), Button1 (Button)"}]
+
+
+def test_parse_canvas_app_screens_missing_screen_file_still_lists_it(tmp_path):
+    (tmp_path / "CanvasManifest.json").write_text(
+        json.dumps({"ScreenOrder": ["MissingScreen"]}), encoding="utf-8"
+    )
+    screens = parse_canvas_app_screens(tmp_path)
+    assert screens == [{"name": "MissingScreen", "controls_summary": ""}]
+
+
+def test_parse_canvas_app_screens_missing_manifest_returns_empty(tmp_path):
+    assert parse_canvas_app_screens(tmp_path / "nope") == []
