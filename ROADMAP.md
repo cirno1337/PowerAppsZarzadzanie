@@ -102,11 +102,24 @@ the personal-tenant verification proves the CLI/format facts but not the
 company's specific environment names, permissions, or auth method (see
 `docs/CORPORATE_SETUP.md` Phase 1).
 
-## Milestone 6 — Real SharePoint integration 🔒
+## Milestone 6 — Real SharePoint integration 🚧 provisioning verified, adapter not implemented
 
-🔒 Blocked on corporate access + a decision on client library (Graph API vs.
-another supported approach), made only after `docs/CORPORATE_SETUP.md`
-Phase 1/3 are complete.
+🚧 Client library decided and verified: **Microsoft Graph** (app-only auth).
+`scripts/provision_sharepoint_graph.py` successfully created a real site,
+all 4 lists with exact columns (incl. the cross-list lookup), and the
+document library + folders end-to-end against a personal test tenant
+(2026-09) — see `docs/SHAREPOINT_SETUP.md` and `docs/CORPORATE_SETUP.md`
+Phase 3.
+
+⏳ `RealSharePointAdapter` itself (`worker/adapters/sharepoint/real.py`) is
+still a full `NotImplementedError` placeholder — the provisioning script
+proves Graph access/permissions work, but job/version CRUD, claim_job's
+concurrency handling, and document upload against Graph are not yet
+implemented. 🔒 Full production verification still blocked on the
+company's actual tenant (not the personal test tenant used for
+provisioning) and a decision on the worker's own long-term service
+identity (narrower than the `Sites.Manage.All` used for one-off
+provisioning).
 
 ## Milestone 7 — Real Copilot integration 🚧 mechanism identified, not implemented
 

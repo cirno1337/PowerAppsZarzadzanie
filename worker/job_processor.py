@@ -148,8 +148,13 @@ class JobProcessor:
         docs/SHAREPOINT_SETUP.md for the InputVersion/OutputVersion columns.
         """
         self.powerplatform.authenticate()
+        # `environment_url` (not the friendly `environment` label like "DEV")
+        # is what a real `pac` CLI needs for its --environment argument (a
+        # URL, ID, or unique name) — the mock adapter ignores this parameter
+        # entirely, which is why this distinction never surfaced until the
+        # real adapter was implemented and checked against it.
         package_path = self.powerplatform.export_solution(
-            application.solution_name, application.environment, self.export_dir, version=version
+            application.solution_name, application.environment_url, self.export_dir, version=version
         )
         unpacked_dir = self.powerplatform.unpack_solution(package_path)
         solution_metadata = self.powerplatform.get_solution_metadata(unpacked_dir)

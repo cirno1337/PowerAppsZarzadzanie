@@ -108,17 +108,27 @@ writes. This project's worker never needs these.
 
 Follow `docs/SHAREPOINT_SETUP.md` and `sharepoint/README.md`. In short:
 
-- [ ] Decide: run `sharepoint/provisioning/provision-lists.ps1` (review it
-      first, run against a test site) or create lists manually
-- [ ] Create `Applications`, `DocumentationJobs`, `DocumentationVersions`,
-      (optional) `Configuration` lists with the exact columns in
-      `sharepoint/lists/*.json`
-- [ ] Create the `PowerPlatformDocumentation` document library with
-      `_jobs`, `_templates`, `_logs` folders
+- [x] **Verified working (2026-09) on a personal test tenant**:
+      `scripts/provision_sharepoint_graph.py` (Microsoft Graph, app-only
+      auth) created a fresh test site, all 4 lists with exact
+      columns, the cross-list lookup, and the `PowerPlatformDocumentation`
+      library with `_jobs`/`_templates`/`_logs` folders — in one run,
+      idempotent on re-run. This is now the recommended provisioning path
+      (ahead of the untested PnP PowerShell script).
+- [ ] **Still required for the company tenant**: create (or pick) the real
+      site, create an Azure AD app registration with Graph `Sites.Manage.All`
+      (Application permission, admin consent granted) scoped to it, run
+      `scripts/provision_sharepoint_graph.py` with that tenant's
+      `TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET`/`SHAREPOINT_SITE_URL` in a
+      local `.env`.
 - [ ] Record any internal-name mangling in `docs/SHAREPOINT_SETUP.md`'s
       table
-- [ ] Grant the worker's service identity Contribute permission on this
-      site/these lists/this library only
+- [ ] Grant the worker's actual production service identity Contribute
+      permission on this site/these lists/this library only — the app
+      registration used for one-off provisioning (`Sites.Manage.All`,
+      broad) should NOT be the same credential the production worker runs
+      as long-term; narrow it once `RealSharePointAdapter` is implemented
+      (see SECURITY.md "Least privilege").
 
 ---
 

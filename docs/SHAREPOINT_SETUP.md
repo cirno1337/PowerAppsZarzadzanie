@@ -15,12 +15,31 @@ match them exactly.
 
 ## Provisioning options, in order of preference
 
-1. **PnP PowerShell script** (`sharepoint/provisioning/provision-lists.ps1`)
-   — reads the JSON definitions and creates lists/columns/library via the
-   [PnP.PowerShell](https://pnp.github.io/powershell/) module. Untested
-   against a real tenant — review before running; run against a
+1. **`scripts/provision_sharepoint_graph.py`** — Python + Microsoft Graph,
+   **verified working end-to-end** (2026-09) against a real SharePoint
+   site on a personal test tenant. Created all 4 lists with exact columns,
+   the cross-list `Application` lookup, the `PowerPlatformDocumentation`
+   library, and its `_jobs`/`_templates`/`_logs` folders — idempotent,
+   safe to re-run. Needs:
+   - An Azure AD app registration: Entra admin center → App registrations
+     → New → API permissions → Microsoft Graph → **Application
+     permissions** → `Sites.Manage.All` → **Grant admin consent**. Create
+     a client secret.
+   - `pip install msal requests` (or `pip install -e ".[provisioning]"`).
+   - A local, git-ignored `.env` at the repo root with `TENANT_ID`,
+     `CLIENT_ID`, `CLIENT_SECRET`, `SHAREPOINT_SITE_URL` — never commit
+     this file or paste its values anywhere.
+
+   Known Graph API quirk (not a bug): `GET .../lists/{id}/columns`
+   doesn't return the `hyperlinkOrPicture` facet for list-scoped columns
+   even when the column was created correctly as that type — this is
+   documented Graph behavior, not evidence of a failed creation.
+2. **PnP PowerShell script** (`sharepoint/provisioning/provision-lists.ps1`)
+   — reads the same JSON definitions and creates lists/columns/library via
+   the [PnP.PowerShell](https://pnp.github.io/powershell/) module.
+   Untested against a real tenant — review before running; run against a
    non-production/test site first.
-2. **Manual creation** via the SharePoint UI, using the JSON files as your
+3. **Manual creation** via the SharePoint UI, using the JSON files as your
    checklist. More tedious but zero script risk — reasonable for a
    first-time setup.
 

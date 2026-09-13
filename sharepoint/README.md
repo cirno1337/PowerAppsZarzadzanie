@@ -14,6 +14,17 @@ re-deriving them.
   the lists and document library from the JSON definitions above. **Not run
   or validated in this repository** (REQUIRES CORPORATE ACCESS) — review it
   carefully and run it against a non-production site first.
+- `../scripts/provision_sharepoint_graph.py` — a Python/Microsoft Graph
+  equivalent, **verified working end-to-end** (2026-09) against a real
+  SharePoint site on a personal test tenant: created all 4 lists with
+  their exact columns (including the cross-list lookup), the
+  `PowerPlatformDocumentation` document library, and its `_jobs`/
+  `_templates`/`_logs` folders. Idempotent — safe to re-run. Requires an
+  Azure AD app registration with Graph Application permission
+  `Sites.Manage.All` (admin consent granted) and
+  `TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET`/`SHAREPOINT_SITE_URL` in a local
+  `.env` — see `docs/SHAREPOINT_SETUP.md`. This is the recommended
+  provisioning method now, ahead of the untested PowerShell script.
 
 ## Document library
 
