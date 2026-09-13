@@ -1,0 +1,6 @@
+{
+  "name": "InvoiceApproval",
+  "version": "1.1.0.0",
+  "publisher": "Contoso",
+  "description": "Automates invoice approval requests submitted by employees."
+}

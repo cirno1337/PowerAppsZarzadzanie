@@ -1,0 +1,10 @@
+{
+  "listName": "Configuration",
+  "description": "Optional. Non-secret, low-sensitivity configuration values only (e.g. a display banner message, a feature flag). NEVER store credentials, tenant IDs, or URLs treated as sensitive here — see SECURITY.md. Real configuration for the worker comes from environment variables (worker/config.py), not this list.",
+  "columns": [
+    {"name": "Title", "type": "Single line of text", "required": true, "notes": "Configuration key name."},
+    {"name": "Value", "type": "Single line of text", "required": false},
+    {"name": "Description", "type": "Multiple lines of text", "required": false}
+  ],
+  "builtInColumnsUsed": ["ID", "Modified"]
+}

@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# Local runtime data (mock SharePoint lists + document library mirror).
+# Never commit this — see CLAUDE.md "Working with mock data".
+.local_data/
+
+# Never commit real secrets/config.
+.env

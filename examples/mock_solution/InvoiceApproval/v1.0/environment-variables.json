@@ -1,0 +1,12 @@
+[
+  {
+    "name": "ApprovalTimeoutHours",
+    "type": "Number",
+    "default_value": "24"
+  },
+  {
+    "name": "NotificationSenderAddress",
+    "type": "String",
+    "default_value": "noreply@contoso.example"
+  }
+]

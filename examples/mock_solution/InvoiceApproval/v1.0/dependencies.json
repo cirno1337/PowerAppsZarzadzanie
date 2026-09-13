@@ -1,0 +1,10 @@
+[
+  {
+    "name": "SharePoint",
+    "type": "connector"
+  },
+  {
+    "name": "Office 365 Outlook",
+    "type": "connector"
+  }
+]

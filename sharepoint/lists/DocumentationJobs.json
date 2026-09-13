@@ -1,0 +1,26 @@
+{
+  "listName": "DocumentationJobs",
+  "description": "The job queue. Power Apps creates rows here; the worker polls for Status=PENDING. This list is the source of truth for job state (ADR-001/ADR-003) — never email.",
+  "columns": [
+    {"name": "Title", "type": "Single line of text", "required": true, "notes": "Mirrors JobId for readability in list views; the built-in ID column is the true unique key."},
+    {"name": "Application", "type": "Lookup", "required": true, "lookupList": "Applications", "lookupField": "Title"},
+    {"name": "Action", "type": "Choice", "required": true, "choices": [
+      "REGISTER_APPLICATION", "DOCUMENT_APPLICATION", "EXPORT_SOLUTION", "ANALYZE_SOLUTION",
+      "COMPARE_VERSION", "GENERATE_DOCUMENTATION", "PUBLISH_DOCUMENTATION", "UPDATE_DOCUMENTATION"
+    ]},
+    {"name": "RequestedBy", "type": "Person or Group", "required": true},
+    {"name": "RequestedAt", "type": "Date and Time", "required": true, "default": "Today (at creation)"},
+    {"name": "Status", "type": "Choice", "required": true, "choices": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "NEEDS_HUMAN_REVIEW", "CANCELLED"], "default": "PENDING"},
+    {"name": "InputVersion", "type": "Single line of text", "required": false, "notes": "Which raw solution export to process (worker/mock convenience); distinct from the documentation version in DocumentationVersions."},
+    {"name": "OutputVersion", "type": "Single line of text", "required": false, "notes": "Written by the worker: the resulting documentation version, e.g. '1.1'."},
+    {"name": "WorkerId", "type": "Single line of text", "required": false, "notes": "Set by claim_job(); identifies which worker instance is/was processing this job."},
+    {"name": "StartedAt", "type": "Date and Time", "required": false},
+    {"name": "CompletedAt", "type": "Date and Time", "required": false},
+    {"name": "ErrorMessage", "type": "Multiple lines of text", "required": false, "plainText": true, "notes": "Safe, credential-free error text only — see SECURITY.md."},
+    {"name": "ResultSummary", "type": "Multiple lines of text", "required": false, "plainText": true},
+    {"name": "CopilotStatus", "type": "Choice", "required": false, "choices": ["NOT_REQUESTED", "MOCKED", "PENDING_HUMAN_REVIEW", "COMPLETED", "FAILED"], "default": "NOT_REQUESTED"},
+    {"name": "RetryCount", "type": "Number", "required": true, "default": 0}
+  ],
+  "builtInColumnsUsed": ["ID", "Created", "Modified"],
+  "concurrencyNote": "Real SharePoint claim_job() should use conditional/ETag-based updates (If-Match) to avoid two workers claiming the same job — see docs/SHAREPOINT_SETUP.md."
+}

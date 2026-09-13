@@ -1,0 +1,22 @@
+{
+  "listName": "Applications",
+  "description": "One row per registered Power Platform application/solution this system documents.",
+  "columns": [
+    {"name": "Title", "type": "Single line of text", "required": true, "notes": "Human-readable application name (also used as the document library folder name, sanitized)."},
+    {"name": "ApplicationId", "type": "Single line of text", "required": true, "notes": "Application-generated stable ID (e.g. a slug). SharePoint does not enforce uniqueness on this column — enforce it in the Power App / worker."},
+    {"name": "SolutionName", "type": "Single line of text", "required": true, "notes": "The Power Platform solution's unique name (not its display name)."},
+    {"name": "Environment", "type": "Choice", "required": true, "choices": ["DEV", "TEST", "UAT", "PROD"], "notes": "Extend choices to match real environment names once known — see docs/CORPORATE_SETUP.md Phase 1."},
+    {"name": "EnvironmentUrl", "type": "Hyperlink or Picture", "required": false, "notes": "REQUIRES TENANT CONFIGURATION — leave blank until known."},
+    {"name": "Owner", "type": "Person or Group", "required": true},
+    {"name": "BusinessOwner", "type": "Person or Group", "required": false},
+    {"name": "Description", "type": "Multiple lines of text", "required": false, "plainText": true},
+    {"name": "CurrentVersion", "type": "Single line of text", "required": false, "notes": "Written by the worker, e.g. '1.1'. Do not edit manually."},
+    {"name": "DocumentationStatus", "type": "Choice", "required": true, "choices": ["NOT_DOCUMENTED", "DOCUMENTED", "UPDATE_AVAILABLE", "DOCUMENTATION_FAILED"], "default": "NOT_DOCUMENTED"},
+    {"name": "LastDocumented", "type": "Date and Time", "required": false},
+    {"name": "LastAnalyzed", "type": "Date and Time", "required": false},
+    {"name": "TechnicalDocumentationUrl", "type": "Hyperlink or Picture", "required": false, "notes": "Written by the worker after generation."},
+    {"name": "UserDocumentationUrl", "type": "Hyperlink or Picture", "required": false, "notes": "Written by the worker after generation."},
+    {"name": "Active", "type": "Yes/No", "required": true, "default": true}
+  ],
+  "builtInColumnsUsed": ["ID", "Created", "Modified", "Author", "Editor"]
+}
