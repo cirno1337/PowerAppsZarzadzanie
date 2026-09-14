@@ -1,0 +1,142 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  AdminDiagnostics:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_AdminDiagnostics:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_AdminDiagnostics:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - BackButton_AdminDiagnostics:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(Screen1, ScreenTransition.Cover)
+                        Text: ="< Dashboard"
+                        Width: =140
+                  - HeaderTitle_AdminDiagnostics:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Admin / Diagnostics"
+                        Width: =400
+            - MainContainer1_AdminDiagnostics:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - JobCountsLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Height: =30
+                        Size: =14
+                        Text: ="Jobs by status"
+                  - PendingLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Pending: " & CountRows(Filter(DocumentationJobs, Status.Value = "PENDING"))
+                  - RunningLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Running: " & CountRows(Filter(DocumentationJobs, Status.Value = "RUNNING"))
+                  - CompletedLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Completed: " & CountRows(Filter(DocumentationJobs, Status.Value = "COMPLETED"))
+                  - FailedLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Failed: " & CountRows(Filter(DocumentationJobs, Status.Value = "FAILED"))
+                  - NeedsReviewLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Needs human review: " & CountRows(Filter(DocumentationJobs, Status.Value = "NEEDS_HUMAN_REVIEW"))
+                  - ConfigLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Height: =30
+                        Size: =14
+                        Text: ="Configuration"
+                  - ConfigGallery:
+                      Control: Gallery@2.15.0
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Height: =250
+                        Items: =Configuration
+                        TemplateSize: =50
+                      Children:
+                        - ConfigKeyLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Height: =25
+                              Text: |-
+                                =ThisItem.Title & ": " & ThisItem.Value
+                              Width: =500
+                              X: =10
+                              Y: =5

@@ -1,0 +1,10 @@
+[
+  {
+    "name": "shared_sharepointonline",
+    "connector": "SharePoint"
+  },
+  {
+    "name": "shared_office365",
+    "connector": "Office 365 Outlook"
+  }
+]

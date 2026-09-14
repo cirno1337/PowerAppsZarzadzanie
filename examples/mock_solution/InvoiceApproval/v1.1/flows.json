@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Invoice Approval",
+    "trigger": "When an item is created in the Invoices SharePoint list",
+    "actions": [
+      "Start an approval",
+      "Wait for approval response",
+      "Update SharePoint item status",
+      "Send email notification to submitter"
+    ],
+    "conditions": [
+      "If approved, mark item Approved",
+      "If rejected, mark item Rejected"
+    ],
+    "timeout": "48h"
+  },
+  {
+    "name": "Invoice Escalation",
+    "trigger": "Recurrence (daily)",
+    "actions": [
+      "Check for invoices pending longer than the escalation timeout",
+      "Send escalation notification to manager via Microsoft Teams",
+      "Update SharePoint item status to Escalated"
+    ],
+    "conditions": [
+      "If an invoice has been pending longer than EscalationTimeoutHours, escalate it"
+    ],
+    "timeout": "n/a"
+  }
+]

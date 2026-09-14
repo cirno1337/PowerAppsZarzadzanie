@@ -1,0 +1,108 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  VersionHistory:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_VersionHistory:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_VersionHistory:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - BackButton_VersionHistory:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: |-
+                          =Navigate(ApplicationDetails, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                        Text: ="< Application"
+                        Width: =140
+                  - HeaderTitle_VersionHistory:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Version History - " & SelectedApplication.Title
+                        Width: =400
+            - MainContainer1_VersionHistory:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - VersionsGallery:
+                      Control: Gallery@2.15.0
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Height: =500
+                        Items: =SortByColumns(Filter(DocumentationVersions, Application.Value = SelectedApplication.Title), "Created", "Descending")
+                        TemplateSize: =70
+                      Children:
+                        - VersionLabel_VersionHistory:
+                            Control: Label@2.5.1
+                            Properties:
+                              FontWeight: =FontWeight.Semibold
+                              Height: =25
+                              Text: ="v" & ThisItem.Version & " (from v" & ThisItem.PreviousVersion & ")"
+                              Width: =400
+                              X: =10
+                              Y: =5
+                        - ImpactLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Height: =25
+                              Size: =11
+                              Text: =ThisItem.DocumentationImpact
+                              Width: =500
+                              X: =10
+                              Y: =30

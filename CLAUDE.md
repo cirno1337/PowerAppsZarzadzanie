@@ -1,1205 +1,336 @@
-You are acting as a senior Solution Architect, Power Platform architect,
-DevOps engineer, automation engineer, and technical writer.
-
-I want you to design and scaffold a complete project called:
-
-"Power Platform Documentation Manager"
-
-The goal is to build an internal system for automatically documenting and
-versioning Microsoft Power Platform applications and solutions.
-
-IMPORTANT CONTEXT
-=================
-
-My company uses Microsoft Power Platform, but we DO NOT have Power Platform
-Premium licenses.
-
-I DO have access to Microsoft Copilot through my company.
-
-Therefore the architecture MUST prioritize standard Power Platform
-capabilities and avoid requiring:
-
-- Dataverse
-- Premium connectors
-- Custom connectors
-- HTTP connectors from Power Automate
-- Azure services unless explicitly marked as optional
-- paid external SaaS services
-
-SharePoint Online, Power Apps, standard Power Automate connectors,
-Microsoft 365 services, Power Platform CLI, PowerShell, Git and a local/company
-worker are acceptable.
-
-The actual company tenant, SharePoint site, Power Platform environments,
-authentication details and Copilot configuration are NOT available while
-developing outside the corporate network.
-
-Therefore the project must be fully developable and testable offline using
-mock data.
-
-DO NOT ask me for corporate credentials.
-
-Instead, create adapters/configuration points so that real corporate
-integration can be enabled later.
-
-==================================================
-MAIN BUSINESS CONCEPT
-==================================================
-
-A user opens a Power App.
-
-The user can:
-
-1. Register a Power Platform application/solution.
-2. Request initial documentation.
-3. Request documentation update.
-4. Analyze changes since the previous documented version.
-5. View documentation status.
-6. View version history.
-7. View previous changes.
-8. Open generated technical documentation.
-9. Open generated user documentation.
-
-Power Apps creates a SharePoint Online item representing a job.
-
-Example:
-
-Action:
-DOCUMENT_APPLICATION
-
-Application:
-Invoice Approval
-
-Environment:
-DEV
-
-RequestedBy:
-user@example.com
-
-Status:
-Pending
-
-Power Apps may also trigger a standard Power Automate flow that sends an
-email notification.
-
-IMPORTANT:
-Email is a notification mechanism, NOT the job queue.
-
-SharePoint is the source of truth for job state.
-
-A worker processes pending jobs.
-
-The worker can:
-
-- retrieve job information
-- use Power Platform CLI
-- export solutions
-- unpack solutions
-- normalize their contents
-- create structured representations
-- compare the current version with the previous snapshot
-- calculate a meaningful diff
-- prepare input for Copilot
-- invoke Copilot/agent functionality if the company's available licensing
-  and APIs support it
-- otherwise create a human-in-the-loop task
-- process the Copilot result
-- generate technical documentation
-- generate user documentation
-- store snapshots
-- store documentation
-- update SharePoint metadata
-- update version history
-- send completion/failure notifications
-
-==================================================
-TARGET ARCHITECTURE
-==================================================
-
-Design the architecture approximately as:
-
-Power Apps
-    |
-    v
-SharePoint Online
-    |
-    v
-Standard Power Automate
-    |
-    v
-Job Queue
-    |
-    v
-Company Worker
-    |
-    +--> Power Platform CLI
-    |
-    +--> PowerShell/scripts
-    |
-    +--> Solution parser
-    |
-    +--> Normalizer
-    |
-    +--> Diff engine
-    |
-    +--> Documentation engine
-    |
-    +--> Copilot / Copilot Agent
-    |
-    v
-SharePoint Documentation Library
-    |
-    v
-Power Automate notification
-    |
-    v
-User email
-
-The worker may initially run locally on my development machine.
-
-The final production deployment may be:
-
-- company Windows VM
-- company server
-- scheduled Windows worker
-- service account/application identity
-- or another company-approved execution host
-
-DO NOT assume which one will be available.
-
-Create a deployment abstraction.
-
-==================================================
-POWER APPS
-==================================================
-
-Design the Power App as a relatively thin frontend.
-
-Suggested screens:
-
-1. Dashboard
-2. Applications
-3. Application Details
-4. Register Application
-5. Request Documentation
-6. Request Update
-7. Version History
-8. Job History
-9. Admin/Diagnostics
-
-Suggested actions:
-
-- Register application
-- Document application
-- Analyze current version
-- Compare versions
-- Generate documentation
-- Publish documentation
-- Retry failed job
-
-Power Apps should NOT execute PowerShell directly.
-
-Power Apps should create SharePoint job records.
-
-==================================================
-SHAREPOINT
-==================================================
-
-Design SharePoint lists.
-
-At minimum create:
-
-1. Applications
-
-Suggested columns:
-
-- Title
-- ApplicationId
-- SolutionName
-- Environment
-- EnvironmentUrl
-- Owner
-- BusinessOwner
-- Description
-- CurrentVersion
-- DocumentationStatus
-- LastDocumented
-- LastAnalyzed
-- TechnicalDocumentationUrl
-- UserDocumentationUrl
-- Active
-- Created
-- Modified
-
-2. DocumentationJobs
-
-Suggested columns:
-
-- Title / JobId
-- Application
-- Action
-- RequestedBy
-- RequestedAt
-- Status
-- InputVersion
-- OutputVersion
-- WorkerId
-- StartedAt
-- CompletedAt
-- ErrorMessage
-- ResultSummary
-- CopilotStatus
-- RetryCount
-
-Actions should be enum-like values such as:
-
-REGISTER_APPLICATION
-EXPORT_SOLUTION
-ANALYZE_SOLUTION
-COMPARE_VERSION
-GENERATE_DOCUMENTATION
-PUBLISH_DOCUMENTATION
-UPDATE_DOCUMENTATION
-
-Statuses:
-
-PENDING
-RUNNING
-COMPLETED
-FAILED
-NEEDS_HUMAN_REVIEW
-CANCELLED
-
-3. DocumentationVersions
-
-Suggested columns:
-
-- Application
-- Version
-- PreviousVersion
-- ChangeSummary
-- DocumentationImpact
-- SnapshotPath
-- DiffPath
-- TechnicalDocumentationPath
-- UserDocumentationPath
-- CreatedBy
-- CreatedAt
-
-4. Configuration
-
-Only if useful. Do not store secrets here.
-
-==================================================
-SHAREPOINT DOCUMENT LIBRARY
-==================================================
-
-Design a document library such as:
-
-PowerPlatformDocumentation/
-
-    ApplicationName/
-
-        v1.0/
-
-            snapshot.json
-            solution-info.json
-            diff.json
-            technical-documentation.md
-            user-guide.md
-
-        v1.1/
-
-            snapshot.json
-            solution-info.json
-            diff.json
-            technical-documentation.md
-            user-guide.md
-
-Also consider:
-
-    _jobs/
-    _templates/
-    _logs/
-
-Do not store secrets in SharePoint.
-
-Explain whether Markdown, DOCX or HTML should be the primary generated format.
-
-Prefer simple formats during MVP development.
-
-==================================================
-POWER PLATFORM CLI
-==================================================
-
-Use Microsoft Power Platform CLI where appropriate.
-
-The worker should support operations such as:
-
-- authentication
-- solution export
-- solution unpack
-- solution inspection
-- canvas app inspection where applicable
-- solution metadata extraction
-
-Do NOT hard-code commands blindly.
-
-Create an abstraction such as:
-
-PowerPlatformAdapter
-
-with methods conceptually similar to:
-
-authenticate()
-list_solutions()
-export_solution()
-unpack_solution()
-get_solution_metadata()
-get_application_metadata()
-
-The implementation must clearly separate:
-
-REAL PAC CLI implementation
-
-from
-
-MOCK implementation
-
-The mock implementation must allow the entire system to work without access
-to Microsoft Power Platform.
-
-==================================================
-NORMALIZATION
-==================================================
-
-Do NOT send raw ZIP files or arbitrary solution contents directly to Copilot.
-
-Create a normalization layer.
-
-Convert relevant Power Platform information into a structured representation.
-
-For example:
-
-{
-  "solution": {
-    "name": "...",
-    "version": "1.4.0.0",
-    "publisher": "...",
-    "description": "..."
-  },
-  "applications": [],
-  "flows": [],
-  "tables": [],
-  "environment_variables": [],
-  "connection_references": [],
-  "dependencies": [],
-  "security": {},
-  "components": []
-}
-
-Design this carefully.
-
-The normalized representation should be deterministic so that Git diffs
-and application version comparisons are useful.
-
-==================================================
-DIFF ENGINE
-==================================================
-
-Create a semantic diff engine.
-
-It should detect things such as:
-
-- added components
-- removed components
-- modified components
-- changed flows
-- changed triggers
-- changed actions
-- changed conditions
-- changed environment variables
-- changed connection references
-- changed dependencies
-- changed app screens
-- changed navigation
-- changed important business logic
-
-Do not rely exclusively on textual diff.
-
-Create a structured diff model.
-
-Example:
-
-{
-  "version_from": "1.3",
-  "version_to": "1.4",
-  "changes": [
-    {
-      "type": "ADDED",
-      "component": "flow",
-      "name": "Invoice Escalation"
-    },
-    {
-      "type": "MODIFIED",
-      "component": "flow",
-      "name": "Invoice Approval",
-      "details": [
-        "timeout changed from 24h to 48h"
-      ]
-    }
-  ]
-}
-
-==================================================
-DOCUMENTATION IMPACT ANALYSIS
-==================================================
-
-Before generating documentation, determine whether documentation actually
-needs to change.
-
-Create deterministic rules where possible.
-
-Example:
-
-Technical documentation impact:
-NONE / LOW / MEDIUM / HIGH
-
-User documentation impact:
-NONE / LOW / MEDIUM / HIGH
-
-Examples:
-
-Adding a logging variable:
-technical = LOW
-user = NONE
-
-Changing approval timeout:
-technical = MEDIUM
-user = HIGH
-
-Adding a new user-facing screen:
-technical = MEDIUM
-user = HIGH
-
-Changing internal error logging:
-technical = LOW
-user = NONE
-
-Adding a new business process:
-technical = HIGH
-user = HIGH
-
-Copilot should be able to refine this analysis.
-
-==================================================
-COPILOT INTEGRATION
-==================================================
-
-This is VERY IMPORTANT.
-
-Do not invent an unofficial "POST prompt to Microsoft Copilot" API.
-
-Research the current Microsoft documentation when implementing the real
-integration.
-
-Determine which of the following is actually available based on the
-company's licensing:
-
-- Microsoft 365 Copilot
-- Copilot Studio
-- Copilot agents
-- agent APIs
-- connectors
-- MCP
-- other officially supported automation mechanisms
-
-The architecture must isolate Copilot behind an interface:
-
-CopilotAdapter
-
-For example:
-
-analyze_changes()
-generate_technical_documentation()
-generate_user_documentation()
-generate_change_summary()
-
-Implement:
-
-1. MockCopilotAdapter
-2. HumanReviewCopilotAdapter
-3. RealCopilotAdapter placeholder/interface
-
-The real adapter should NOT be implemented based on assumptions.
-
-Create a document:
-
-docs/COPILOT_INTEGRATION.md
-
-that explains:
-
-- what must be verified in the corporate tenant
-- which Copilot product is available
-- required licensing
-- required permissions
-- whether API access exists
-- whether MCP is available
-- whether Copilot Studio is available
-- whether an agent can be called programmatically
-- how authentication works
-- security considerations
-- fallback if automation is unavailable
-
-The project MUST remain usable with HumanReviewCopilotAdapter.
-
-==================================================
-HUMAN-IN-THE-LOOP FALLBACK
-==================================================
-
-If automatic Copilot invocation is not available, the worker should:
-
-1. Prepare a structured analysis package.
-2. Generate a ready-to-use Copilot prompt.
-3. Save the prompt to SharePoint or local output.
-4. Set job status to NEEDS_HUMAN_REVIEW.
-5. Allow an administrator to run the prompt in approved corporate Copilot.
-6. Allow the Copilot result to be pasted/uploaded back.
-7. Continue processing automatically.
-
-This fallback is important.
-
-==================================================
-DOCUMENTATION GENERATION
-==================================================
-
-Generate:
-
-1. Technical Documentation
-2. User Guide
-3. Change Summary
-
-Technical documentation should contain sections such as:
-
-- Overview
-- Architecture
-- Components
-- Power Apps
-- Power Automate
-- Data Sources
-- Dependencies
-- Environment Variables
-- Connection References
-- Security
-- Business Logic
-- Error Handling
-- ALM
-- Deployment
-- Known Limitations
-
-User guide:
-
-- Purpose
-- Who should use the application
-- How to open it
-- Main workflows
-- Step-by-step usage
-- Expected behavior
-- Troubleshooting
-- FAQ
-
-==================================================
-VERSIONING
-==================================================
-
-Use semantic-ish versioning where appropriate.
-
-At minimum support:
-
-1.0
-1.1
-1.2
-2.0
-
-Document how version numbers are determined.
-
-A documentation update should produce something like:
-
-Version: 1.4
-
-Changes:
-- Added invoice escalation flow
-- Approval timeout increased from 24h to 48h
-- Added escalation notification
-
-Store the change summary in the SharePoint version history.
-
-==================================================
-WORKER
-==================================================
-
-Create a worker application.
-
-Prefer Python for the initial MVP unless you have a strong reason to use
-PowerShell/.NET.
-
-However, PAC CLI and PowerShell commands must be callable by the worker.
-
-Suggested architecture:
-
+# CLAUDE.md — Power Platform Documentation Manager
+
+This file is the standing operating guide for any Claude Code session working
+in this repository. The original project brief (the prompt that created this
+repository) is preserved in git history as the initial commit and summarized
+in `ARCHITECTURE.md` / `DECISIONS.md`. This file is intentionally the
+*working* reference, not the brief itself.
+
+## What this project is
+
+An internal system that automatically documents and versions Microsoft Power
+Platform applications/solutions. A Power App lets users register applications
+and request documentation. SharePoint Online lists are the source of truth
+for job state and application metadata. A Python worker polls SharePoint for
+pending jobs, uses the Power Platform CLI to export/unpack solutions,
+normalizes them into a deterministic JSON representation, computes a semantic
+diff against the previous version, assesses documentation impact, optionally
+calls Copilot (or falls back to a human-in-the-loop step), generates
+Markdown technical documentation and a user guide, and writes everything back
+to SharePoint.
+
+**Hard constraint:** no Dataverse, no Premium/custom connectors, no HTTP
+connector in Power Automate, no paid SaaS, no Azure services unless
+explicitly opted into later. SharePoint Online + standard Power Automate
+connectors + Power Apps + Power Platform CLI + PowerShell + a worker process
+are the only assumed platform pieces.
+
+**Hard requirement:** the entire system must build, run, and be tested on a
+personal/offline machine with zero corporate network access, using mock
+adapters. Real integration is added later behind the same interfaces.
+
+## Repository structure
+
+```
+CLAUDE.md                  this file
+ARCHITECTURE.md            system design, component responsibilities
+DECISIONS.md               ADRs
+ROADMAP.md                 milestones and status
+SECURITY.md                security model
+README.md                  project overview for GitHub
+CONTRIBUTING.md            contribution/dev workflow notes
+
+docs/                      deep-dive docs (see docs/ for the index)
+worker/                    Python worker (the only executable backend code)
+examples/mock_solution/    mock Power Platform export data, v1.0 and v1.1
+scripts/                   setup/run/demo/test entry points (bash + PowerShell)
+config/                    non-secret configuration templates
+sharepoint/                list schemas + provisioning script (design artifact)
+powerapps/                 screen/formula design artifacts (no real .msapp)
+powerautomate/             flow design artifacts (no real flow package)
+```
+
+`worker/` internal layout:
+
+```
 worker/
-    main.py
-    config.py
-    queue/
+    main.py                 polling loop entry point
+    config.py                environment-based configuration, no secrets in code
+    models.py                enums + dataclasses shared across the worker
+    job_processor.py         orchestrates one job's lifecycle
+    queue/                   thin job-queue wrapper over a SharePointAdapter
     adapters/
-    powerplatform/
-    copilot/
-    sharepoint/
-    documentation/
-    diff/
-    normalization/
-    logging/
-    tests/
+        powerplatform/       PowerPlatformAdapter: base + mock + real (placeholder)
+        copilot/              CopilotAdapter: base + mock + human_review + real (placeholder)
+        sharepoint/           SharePointAdapter: base + mock (local JSON) + real (placeholder)
+    normalization/            raw export -> deterministic normalized schema
+    diff/                     semantic diff engine + documentation impact rules
+    versioning/               version-number policy
+    documentation/            Markdown generation (technical doc, user guide, change summary)
+    logging_setup.py          logging configuration, no secrets in log output
+    tests/                    pytest suite (unit + integration pipeline test)
+```
 
-The worker should:
+## Architectural principles
 
-1. Poll SharePoint for PENDING jobs.
-2. Lock/claim a job safely.
-3. Execute the requested action.
-4. Update status to RUNNING.
-5. Perform the operation.
-6. Save artifacts.
-7. Update SharePoint.
-8. Set status to COMPLETED.
-9. Send notification.
-10. On failure, set FAILED and store a safe error message.
+- **SharePoint is the source of truth for job state.** Email/Power Automate
+  notifications are side effects, never the queue.
+- **Every external system sits behind an adapter interface** with at least a
+  mock implementation: `PowerPlatformAdapter`, `CopilotAdapter`,
+  `SharePointAdapter`. Business logic in `worker/` never imports a vendor SDK
+  or shells out to `pac`/PowerShell directly — it calls the adapter
+  interface. Only the `real.py` module inside each adapter package is allowed
+  to do that.
+- **Copilot is optional, not required.** The worker must fully function with
+  `HumanReviewCopilotAdapter` (or `MockCopilotAdapter` for local dev). Nothing
+  in the pipeline may assume a specific Copilot product, API, or MCP
+  availability — those are unverified until corporate access exists.
+- **Never send raw solution ZIPs/arbitrary files to Copilot.** Only the
+  normalized JSON representation (or a subset of it) goes into any prompt.
+- **Normalization must be deterministic**: stable key ordering, stable list
+  ordering (sort by name/id), no timestamps or GUIDs that change between
+  identical exports. This is what makes diffs and version comparisons
+  meaningful and makes `git diff` on snapshot files useful.
+- **The diff engine is semantic, not textual.** It compares normalized
+  structures field-by-field per component type and emits a structured diff
+  (see `worker/diff/engine.py` and `ARCHITECTURE.md`), never a raw text diff
+  of JSON.
+- **Documentation impact analysis is rule-based and deterministic first.**
+  Copilot may refine/override it, but the deterministic rules
+  (`worker/diff/impact.py`) must produce a reasonable answer with zero AI
+  involvement, because AI involvement is not guaranteed to be available.
+- **Idempotency and safe retries are required**, not optional polish. A job
+  re-picked up after a crash must not produce duplicate documentation
+  versions or duplicate SharePoint writes.
 
-Implement retry handling.
+## Coding conventions
 
-Avoid duplicate execution.
+- Python 3.11+, standard library first. Only add a dependency if the mock
+  path genuinely needs it (currently: `pytest` for tests only — the worker
+  runtime itself has zero third-party dependencies so it stays installable
+  without network access). If a real adapter later needs an SDK (e.g. an
+  Office365/Graph client, `pac` CLI), add it as an optional extra, not a hard
+  dependency of the mock path.
+- Adapters are plain classes implementing an `abc.ABC` base with explicit
+  method signatures — no dependency-injection framework, no metaclass magic.
+- Dataclasses (`@dataclass`) for all structured records (`Job`, `Application`,
+  `DocumentationVersion`, normalized schema nodes, diff entries).
+- No secrets, tenant IDs, SharePoint URLs, or environment names hard-coded
+  anywhere in `worker/`, `config/`, `examples/`, or docs. Configuration comes
+  from environment variables read in `worker/config.py`, with `.env.example`
+  documenting the variable names only.
+- Keep generated Markdown deterministic given the same inputs — tests assert
+  on structure/section presence, not on exact prose, since Copilot-refined
+  runs will vary but mock/deterministic runs should not.
+- Every module that touches a real Microsoft service must have a module or
+  class docstring stating whether it is `MOCKED`, `REQUIRES CORPORATE
+  ACCESS`, `REQUIRES TENANT CONFIGURATION`, or `REQUIRES LICENSING
+  VERIFICATION`.
 
-Design for idempotency.
+## Testing requirements
 
-==================================================
-SECURITY
-==================================================
+- Run tests with `./scripts/run-tests.sh` (wraps `pytest worker/tests`).
+- Every new adapter, normalization rule, diff rule, or impact rule needs a
+  unit test.
+- The integration test (`worker/tests/test_integration_pipeline.py`) must
+  keep passing: register application → document v1.0 → detect v1.0→v1.1
+  changes → compute impact → regenerate docs → update version history →
+  produce a change summary. Do not weaken this test to make unrelated work
+  pass; fix the underlying code instead.
+- Never mark an integration with a real Microsoft service as tested unless it
+  was actually exercised against that service. Mock-path tests prove the
+  mock path only — say so in commit messages/PR descriptions.
 
-Treat this as an internal enterprise application.
+## Security requirements
 
-Document:
+See `SECURITY.md` for the full model. In short: no credentials in Git,
+config files, SharePoint list values, prompts, or generated docs; worker
+config comes from environment variables or an OS-level secret store; log
+output must never contain secrets or full solution contents; least-privilege
+SharePoint/Power Platform permissions for the worker's service account.
 
-- authentication
-- authorization
-- secrets
-- service accounts
-- least privilege
-- SharePoint permissions
-- Power Platform permissions
-- audit logging
-- sensitive information
-- credential storage
-- logging policy
+## Working with mock data
 
-NEVER put credentials into:
+- `examples/mock_solution/<AppName>/v1.0/` and `v1.1/` are the canonical mock
+  export fixtures. `v1.1` must contain realistic, intentional changes from
+  `v1.0` (see `examples/mock_solution/README.md` for the change list) so the
+  diff/impact/versioning pipeline has something real to detect.
+- `MockPowerPlatformAdapter` reads directly from `examples/mock_solution/`
+  and treats each version directory as an already-unpacked solution (no real
+  zip handling needed for the mock path).
+- `MockSharePointAdapter` persists lists and the document library as local
+  JSON/Markdown files under a runtime data directory (default
+  `.local_data/`, git-ignored). It is a faithful enough stand-in that
+  `job_processor.py` cannot tell it apart from a future real adapter at the
+  interface level.
+- `./scripts/demo.sh` runs the full mock pipeline end-to-end and prints a
+  summary. Use it to sanity-check changes quickly.
 
-- Git
-- config files
-- README
-- SharePoint list values
-- prompts
-- generated documentation
+## Working with real Power Platform (when corporate access exists)
 
-Use environment variables or an appropriate secret store.
+- Do not implement `real.py` adapter internals speculatively. Follow
+  `docs/CORPORATE_SETUP.md` to gather real facts first (environment URLs,
+  SharePoint site, licensing, permissions).
+- The real Power Platform adapter should wrap the actual `pac` CLI
+  (authenticate, solution export/unpack, metadata extraction) via
+  `subprocess`, translating CLI output into the same return types the mock
+  adapter produces, so `job_processor.py` and everything above it needs zero
+  changes.
+- The real SharePoint adapter should use an approach validated against the
+  actual tenant (e.g. Microsoft Graph or a supported SharePoint REST/CSOM
+  library) — do not guess the client library before corporate access
+  confirms what's permitted/available.
+- Switching from mock to real must be a configuration change
+  (`PPDM_ENVIRONMENT=real` or similar in `worker/config.py`), never a code
+  change to `job_processor.py` or anything in `normalization/`, `diff/`,
+  `versioning/`, or `documentation/`.
 
-==================================================
-MOCK ENVIRONMENT
-==================================================
+## What must NEVER be assumed
 
-Create realistic mock Power Platform data.
+- That Dataverse, Premium connectors, or an HTTP connector are available —
+  they are explicitly out of scope unless the user gives explicit approval.
+- That any specific Copilot product, API, or MCP server is licensed or
+  reachable. This is unverified until confirmed in the corporate tenant
+  (see `docs/COPILOT_INTEGRATION.md`).
+- That a specific worker execution host (VM, server, scheduled task, service
+  account) will be used in production. Keep worker startup/config host-
+  agnostic (`worker/main.py` + `worker/config.py`, no OS-specific paths
+  outside `scripts/*.ps1` vs `scripts/*.sh`).
+- That the corporate tenant's SharePoint site URL, list internal names, app
+  IDs, or environment URLs are known. All of these are placeholders read
+  from configuration, never literals in code or docs (docs use `<placeholder>`
+  syntax explicitly).
+- That a real integration "probably works" because the mock path works. Mock
+  passing tests prove the mock path only.
 
-Example:
+## How Copilot integration is isolated
 
-examples/mock_solution/
+`worker/adapters/copilot/base.py` defines `CopilotAdapter` with
+`analyze_changes()`, `generate_technical_documentation()`,
+`generate_user_documentation()`, `generate_change_summary()`. Three
+implementations exist:
 
-with:
+1. `MockCopilotAdapter` — deterministic, template-based, no network calls.
+   Used for local development and tests.
+2. `HumanReviewCopilotAdapter` — writes a ready-to-run prompt file to the
+   local output directory (and, via `SharePointAdapter`, to
+   `_jobs/<job-id>/copilot-prompt.md`), sets the job to
+   `NEEDS_HUMAN_REVIEW`, and exposes a method to ingest a human-pasted result
+   to resume processing.
+3. `RealCopilotAdapter` — placeholder only. Raises `NotImplementedError`
+   with a message pointing at `docs/COPILOT_INTEGRATION.md`. Do not implement
+   its body until that document's verification checklist has been completed
+   against the real tenant.
 
-- solution metadata
-- canvas app metadata
-- flow definitions
-- environment variables
-- connection references
-- dependencies
+`job_processor.py` selects the adapter via `worker/config.py`
+(`PPDM_COPILOT_MODE=mock|human_review|real`), defaulting to `mock` for local
+development.
 
-Create at least:
+## How SharePoint is used
 
-v1.0
-v1.1
+- **Applications list**: one row per registered Power Platform
+  application/solution; current version, documentation status, and links to
+  the latest generated docs live here.
+- **DocumentationJobs list**: the job queue. Power Apps creates rows here;
+  the worker polls for `Status = PENDING`, claims a row by setting `Status =
+  RUNNING` + `WorkerId` + `StartedAt`, and updates it through to
+  `COMPLETED`/`FAILED`/`NEEDS_HUMAN_REVIEW`.
+- **DocumentationVersions list**: one row per generated documentation
+  version per application, with the change summary and paths into the
+  document library.
+- **Document library** (`PowerPlatformDocumentation/<AppName>/<version>/`):
+  `snapshot.json` (normalized representation), `solution-info.json` (raw
+  metadata), `diff.json`, `technical-documentation.md`, `user-guide.md`. See
+  `docs/SHAREPOINT_SETUP.md` for exact column definitions.
+- The mock adapter reproduces this exact shape locally so the worker code
+  path is identical between mock and real.
 
-where v1.1 contains realistic changes.
+## How jobs are processed
 
-The test suite must demonstrate that the system detects these changes.
+See `worker/job_processor.py` and `ARCHITECTURE.md` for the full sequence
+diagram. Summary: poll → claim (idempotent, atomic status transition) → run
+action-specific pipeline → save artifacts → update SharePoint metadata and
+version history → set terminal status → notify. Failures set `FAILED` with a
+sanitized error message and increment `RetryCount`; jobs under the retry
+limit are returned to `PENDING`, others stay `FAILED` for human attention.
 
-==================================================
-REPOSITORY STRUCTURE
-==================================================
+## How versioning works
 
-Create a professional repository.
+See `worker/versioning/version.py` and `ARCHITECTURE.md`. Summary: no
+detected changes → no new version. Any detected change with impact `LOW`,
+`MEDIUM`, or `HIGH` → minor version bump (`1.0` → `1.1` → `1.2`). A major
+version bump (`x.0`) is a deliberate decision, not automatically derived from
+diff heuristics — it is triggered explicitly (e.g. an administrator marking a
+release as major), because inferring "this deserves a new major version"
+purely from a diff is unreliable. Document any change to this policy in
+`DECISIONS.md`.
 
-Suggested:
+## How to update documentation generation
 
-README.md
-CLAUDE.md
-ARCHITECTURE.md
-DECISIONS.md
-ROADMAP.md
-SECURITY.md
-CONTRIBUTING.md
+- Section lists for technical documentation and the user guide are fixed by
+  the project brief (see `ARCHITECTURE.md`); do not silently drop a required
+  section even if content is thin — write "Not applicable" rather than
+  omitting the heading, so downstream consumers can rely on a stable
+  structure.
+- Prefer improving `normalization/` or `diff/` to get better input data over
+  adding special-casing inside `documentation/generator.py`.
 
-docs/
-    GETTING_STARTED.md
-    LOCAL_DEVELOPMENT.md
-    CORPORATE_SETUP.md
-    POWER_PLATFORM_SETUP.md
-    SHAREPOINT_SETUP.md
-    COPILOT_INTEGRATION.md
-    WORKER_SETUP.md
-    DEPLOYMENT.md
-    TROUBLESHOOTING.md
+## How to make architectural decisions
 
-src/
-tests/
-examples/
-scripts/
-config/
-powerapps/
-powerautomate/
-sharepoint/
+- If a decision changes the no-Premium constraint, adds a new external
+  dependency, or changes an adapter interface, write an ADR in
+  `DECISIONS.md` before implementing it.
+- Prefer the smallest change that keeps the mock and real paths behind the
+  same interface.
 
-Adapt this structure if you have a better architecture.
+## When to ask the user questions
 
-==================================================
-CLAUDE.md
-==================================================
+- Before doing large, expensive, or hard-to-reverse work whose shape isn't
+  already specified here or in `ROADMAP.md`.
+- Before adding a new third-party dependency, especially anything that would
+  require network access to install, or anything that touches the
+  no-Premium constraint.
+- Before committing to a specific real-world SharePoint/Power Platform CLI
+  library choice — that should follow the corporate verification checklist,
+  not a guess made offline.
 
-Create a comprehensive CLAUDE.md for yourself.
+## When to stop and request corporate information
 
-It must tell future Claude Code sessions:
+Stop and create a documented placeholder (never guess) when a task requires:
+tenant IDs, SharePoint site URLs, environment URLs, actual license/SKU
+information, actual Copilot product availability, actual PAC CLI output
+against a real environment, or any credential. Continue building/testing the
+mock path in the same session rather than blocking.
 
-- what the project does
-- architectural principles
-- repository structure
-- coding conventions
-- testing requirements
-- security requirements
-- how to work with mock data
-- how to work with real Power Platform
-- what must NEVER be assumed
-- how Copilot integration is isolated
-- how SharePoint is used
-- how jobs are processed
-- how versioning works
-- how to update documentation
-- how to make architectural decisions
-- when to ask the user questions
-- when to stop and request corporate information
-- how to avoid breaking the no-Premium requirement
+## How to avoid breaking the no-Premium requirement
 
-Also include a "Do not do" section.
+- Before adding any Power Automate action, check it against the standard
+  connector list (SharePoint, Office 365 Outlook, Approvals, Teams,
+  scheduled/recurrence triggers are safe; anything requiring an HTTP,
+  Premium, or custom connector is not).
+- Before adding any Power Platform capability, ask "does this require
+  Dataverse?" If yes, stop and get explicit approval first.
+- Azure services (Key Vault, Functions, Logic Apps, etc.) are optional
+  extensions only, always clearly marked as such, never required for the
+  MVP to function.
 
-Examples:
+## Do not do
 
 DO NOT:
-- introduce Dataverse without explicit approval
-- introduce Premium connectors without explicit approval
-- hard-code tenant IDs
-- hard-code SharePoint URLs
-- store credentials
-- invent Microsoft APIs
-- assume Copilot APIs exist
-- assume MCP is available
-- require VPN for local development
-- couple business logic directly to Power Apps
-
-==================================================
-CLAUDE SELF-DIRECTED DEVELOPMENT
-==================================================
-
-I want you to work in an agentic manner.
-
-Before coding:
-
-1. Inspect the repository.
-2. Create an implementation plan.
-3. Identify architectural risks.
-4. Create/update CLAUDE.md.
-5. Create/update ARCHITECTURE.md.
-6. Create ROADMAP.md.
-7. Break the project into milestones.
-
-Then implement milestone by milestone.
-
-After each milestone:
-
-- run tests
-- inspect failures
-- fix them
-- update documentation
-- commit changes if Git is available
-
-Do not pretend an integration works if it has not been tested.
-
-Clearly mark:
-
-IMPLEMENTED
-
-MOCKED
-
-REQUIRES CORPORATE ACCESS
-
-REQUIRES TENANT CONFIGURATION
-
-REQUIRES LICENSING VERIFICATION
-
-==================================================
-OFFLINE-FIRST DEVELOPMENT
-==================================================
-
-The project must be useful without:
-
-- corporate VPN
-- corporate Microsoft account
-- Power Platform tenant
-- SharePoint access
-- Copilot access
-
-Create mock adapters for all of them.
-
-I should be able to clone the repository and run:
-
-./scripts/setup.sh
-
-and then something conceptually similar to:
-
-./scripts/demo.sh
-
-which demonstrates:
-
-Register application
-        ↓
-Create documentation job
-        ↓
-Mock Power Platform export
-        ↓
-Normalize
-        ↓
-Compare v1.0 vs v1.1
-        ↓
-Analyze documentation impact
-        ↓
-Mock Copilot
-        ↓
-Generate documentation
-        ↓
-Store local artifacts
-        ↓
-Show final result
-
-==================================================
-CORPORATE SETUP GUIDE
-==================================================
-
-Create a VERY detailed:
-
-docs/CORPORATE_SETUP.md
-
-This document must be written for me personally when I eventually regain
-access to my company's network.
-
-It should contain a checklist like:
-
-PHASE 1 — Gather information
-
-[ ] Power Platform environment URLs
-[ ] Environment names
-[ ] Solution names
-[ ] SharePoint site URL
-[ ] SharePoint list names
-[ ] SharePoint library name
-[ ] Microsoft account used by worker
-[ ] Worker machine
-[ ] Network/VPN requirements
-[ ] Power Platform permissions
-[ ] SharePoint permissions
-[ ] Copilot product/license
-[ ] Copilot Studio availability
-[ ] MCP availability
-[ ] API availability
-[ ] Security restrictions
-[ ] Service account policy
-
-PHASE 2 — Validate Power Platform CLI
-
-Provide exact commands to:
-
-- install/check PAC CLI
-- authenticate
-- list environments
-- select environment
-- list solutions
-- export a test solution
-- unpack it
-
-But clearly separate commands that are safe to execute from commands that
-could modify production.
-
-PHASE 3 — SharePoint
-
-Explain how to create:
-
-Applications
-DocumentationJobs
-DocumentationVersions
-
-and the document library.
-
-Include exact column names and types.
-
-PHASE 4 — Power Apps
-
-Explain how to create/connect the app to SharePoint.
-
-Describe each screen.
-
-Describe each Power Fx operation.
-
-PHASE 5 — Power Automate
-
-Create the required standard flows.
-
-Explain triggers, actions and conditions.
-
-Avoid Premium connectors.
-
-PHASE 6 — Worker
-
-Explain:
-
-- where to install it
-- Python environment
-- PAC CLI
-- PowerShell
-- configuration
-- authentication
-- permissions
-- scheduling
-- logging
-- testing
-
-PHASE 7 — Copilot
-
-Give me a diagnostic checklist to determine exactly what Copilot product I
-have.
-
-Then tell me how to determine whether:
-
-- API invocation is possible
-- Copilot Studio agent invocation is possible
-- MCP is possible
-- human-in-the-loop is required
-
-Do NOT invent undocumented procedures.
-
-Link to official Microsoft documentation where relevant.
-
-PHASE 8 — First real test
-
-Provide a safe test procedure using a non-production Power Platform solution.
-
-The first test must NOT modify production.
-
-PHASE 9 — Production readiness
-
-Checklist for:
-
-- security
-- permissions
-- logging
-- backups
-- retries
-- monitoring
-- rollback
-- documentation
-- support
-- ownership
-
-==================================================
-SETUP SCRIPT
-==================================================
-
-Create scripts that make local setup easy.
-
-For example:
-
-scripts/setup.sh
-scripts/run-worker.sh
-scripts/demo.sh
-scripts/run-tests.sh
-
-If Windows compatibility is important, also create:
-
-scripts/setup.ps1
-scripts/run-worker.ps1
-
-Do not assume the user has Docker unless Docker is actually useful.
-
-==================================================
-TESTING
-==================================================
-
-Create unit tests for:
-
-- normalization
-- diff engine
-- documentation impact analysis
-- versioning
-- job processing
-- retry logic
-- idempotency
-- mock Power Platform adapter
-- mock Copilot adapter
-
-Create integration-style tests for the complete mock pipeline.
-
-The following scenario MUST pass:
-
-v1.0
-→ documentation generated
-
-v1.1
-→ changes detected
-
-→ documentation impact calculated
-
-→ documentation regenerated
-
-→ version history updated
-
-→ change summary generated
-
-==================================================
-README
-==================================================
-
-Create a polished README suitable for GitHub.
-
-It should explain:
-
-- what this project is
-- why it exists
-- architecture
-- no-Premium constraint
-- Copilot integration
-- screenshots/placeholders
-- quickstart
-- demo
-- corporate deployment
-- security
-- limitations
-- roadmap
-
-Do NOT falsely claim that real Microsoft integrations are implemented.
-
-Clearly distinguish MVP from production integration.
-
-==================================================
-ARCHITECTURAL DECISIONS
-==================================================
-
-Create DECISIONS.md and document important decisions.
-
-At minimum:
-
-ADR-001:
-Why SharePoint instead of Dataverse
-
-ADR-002:
-Why a worker exists
-
-ADR-003:
-Why email is notification rather than job queue
-
-ADR-004:
-Why Power Platform CLI is isolated behind an adapter
-
-ADR-005:
-Why Copilot is isolated behind an adapter
-
-ADR-006:
-Why the system supports human-in-the-loop
-
-ADR-007:
-Why normalized representations are used instead of raw ZIP diffs
-
-ADR-008:
-Why the system is offline-first
-
-For each decision explain:
-
-Context
-Decision
-Alternatives
-Trade-offs
-Consequences
-
-==================================================
-IMPORTANT REAL-WORLD CONSTRAINT
-==================================================
-
-I want this to become a real internal tool eventually.
-
-However, I currently cannot access the corporate environment.
-
-Therefore:
-
-DO NOT BLOCK DEVELOPMENT ON CORPORATE ACCESS.
-
-Build the maximum possible amount using mocks.
-
-Whenever a real integration cannot be implemented without corporate access,
-create:
-
-1. an interface
-2. a mock implementation
-3. configuration
-4. documentation
-5. a clear "when you get corporate access" checklist
-
-==================================================
-FIRST TASK
-==================================================
-
-Do NOT immediately start writing hundreds of lines of code.
-
-First:
-
-1. Inspect the repository.
-2. Create the architecture.
-3. Create CLAUDE.md.
-4. Create the documentation structure.
-5. Create the roadmap.
-6. Create the mock architecture.
-7. Create the first working vertical slice.
-8. Run tests.
-9. Show me what was implemented.
-10. Identify the next milestone.
-
-After that, continue implementing the project autonomously where safe.
-
-When you encounter something requiring real corporate information, DO NOT
-guess.
-
-Create a clearly documented placeholder and continue with the mock path.
-
-Your ultimate goal is to leave me with a repository that I can develop now
-on my personal/offline machine and then connect to my company's actual
-Power Platform environment once I have VPN/network access.
+- introduce Dataverse without explicit user approval
+- introduce Premium or custom connectors, or an HTTP connector in Power
+  Automate, without explicit user approval
+- hard-code tenant IDs, SharePoint site URLs, or environment URLs anywhere
+  (code, docs, tests, examples) — use `<placeholder>` in docs and
+  environment variables in code
+- store credentials or secrets in Git, config files, README, SharePoint list
+  values, prompts, or generated documentation
+- invent undocumented Microsoft APIs or endpoints
+- assume a specific Copilot API, Copilot Studio availability, or MCP server
+  exists before it's verified in the corporate tenant
+- assume VPN/corporate network is required for local development or tests
+- couple business logic (normalization, diff, impact, versioning,
+  documentation generation) directly to Power Apps or to a specific adapter
+  implementation
+- weaken or delete the mock integration test to make something else pass
+- claim a real integration works without having actually exercised it

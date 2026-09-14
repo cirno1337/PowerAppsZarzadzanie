@@ -1,0 +1,141 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  Screen1:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+      LoadingSpinnerColor: =RGBA(0, 120, 212, 1)
+    Children:
+      - ScreenContainer1_Screen1:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_Screen1:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - HeaderTitle_Screen1:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Power Platform Documentation Manager"
+                        Width: =400
+                  - NavApplicationsButton:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(ApplicationsScreen, ScreenTransition.Cover)
+                        Text: ="Applications"
+                        Width: =140
+                  - NavRegisterButton:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(RegisterApplication, ScreenTransition.Cover)
+                        Text: ="Register Application"
+                        Width: =180
+                  - NavAdminButton:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(AdminDiagnostics, ScreenTransition.Cover)
+                        Text: ="Admin"
+                        Width: =100
+            - MainContainer1_Screen1:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =12
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - PendingCountLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =30
+                        Size: =14
+                        Text: |-
+                          ="Pending jobs: " & CountRows(Filter(DocumentationJobs, Status.Value = "PENDING"))
+                  - AttentionCountLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =30
+                        Size: =14
+                        Text: |-
+                          ="Applications needing attention: " & CountRows(Filter(Applications, DocumentationStatus.Value = "UPDATE_AVAILABLE"))
+                  - RecentJobsLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Height: =30
+                        Size: =14
+                        Text: ="Recent jobs"
+                  - RecentJobsGallery:
+                      Control: Gallery@2.15.0
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Height: =400
+                        Items: =FirstN(SortByColumns(DocumentationJobs, "RequestedAt", "Descending"), 10)
+                        TemplateSize: =60
+                      Children:
+                        - JobTitleLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              FontWeight: =FontWeight.Semibold
+                              Height: =25
+                              Text: =ThisItem.Title
+                              Width: =500
+                              X: =10
+                              Y: =5
+                        - JobStatusLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Height: =25
+                              Size: =11
+                              Text: =ThisItem.Action.Value & " - " & ThisItem.Status.Value
+                              Width: =500
+                              X: =10
+                              Y: =30

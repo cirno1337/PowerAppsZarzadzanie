@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Invoice Approval",
+    "trigger": "When an item is created in the Invoices SharePoint list",
+    "actions": [
+      "Start an approval",
+      "Wait for approval response",
+      "Update SharePoint item status",
+      "Send email notification to submitter"
+    ],
+    "conditions": [
+      "If approved, mark item Approved",
+      "If rejected, mark item Rejected"
+    ],
+    "timeout": "24h"
+  }
+]

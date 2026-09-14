@@ -1,0 +1,194 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  RegisterApplication:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_RegisterApplication:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_RegisterApplication:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - BackButton_RegisterApplication:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(ApplicationsScreen, ScreenTransition.Cover)
+                        Text: ="< Applications"
+                        Width: =140
+                  - HeaderTitle_RegisterApplication:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Register Application"
+                        Width: =300
+            - MainContainer1_RegisterApplication:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - TitleInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Application title"
+                  - TitleInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        HintText: ="e.g. Invoice Approval"
+                  - ApplicationIdInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Application ID (slug)"
+                  - ApplicationIdInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        HintText: ="e.g. invoice-approval"
+                  - SolutionNameInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Solution name"
+                  - SolutionNameInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        HintText: ="e.g. InvoiceApproval"
+                  - EnvironmentInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Environment (DEV, TEST, UAT or PROD)"
+                  - EnvironmentInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: ="DEV"
+                        HintText: ="DEV"
+                  - EnvironmentUrlInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Environment URL (optional)"
+                  - EnvironmentUrlInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        HintText: ="https://..."
+                  - DescriptionInputLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =20
+                        Size: =11
+                        Text: ="Description (optional)"
+                  - DescriptionInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        Height: =80
+                        Mode: =TextMode.MultiLine
+                  - ButtonsContainer_RegisterApplication:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Height: =50
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                      Children:
+                        - SaveButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Patch(
+                                    Applications,
+                                    Defaults(Applications),
+                                    {
+                                        Title: TitleInput.Text,
+                                        ApplicationId: ApplicationIdInput.Text,
+                                        SolutionName: SolutionNameInput.Text,
+                                        Environment: {Value: EnvironmentInput.Text, Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        EnvironmentUrl: EnvironmentUrlInput.Text,
+                                        Description: DescriptionInput.Text,
+                                        Owner: {
+                                            '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
+                                            Claims: "i:0#.f|membership|" & Lower(User().Email),
+                                            Department: "",
+                                            DisplayName: User().FullName,
+                                            Email: User().Email,
+                                            JobTitle: "",
+                                            Picture: ""
+                                        },
+                                        DocumentationStatus: {Value: "NOT_DOCUMENTED", Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        Active: true
+                                    }
+                                );
+                                Navigate(ApplicationsScreen, ScreenTransition.Cover)
+                              Text: ="Save"
+                              Width: =120
+                        - CancelButton_RegisterApplication:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: =Navigate(ApplicationsScreen, ScreenTransition.Cover)
+                              Text: ="Cancel"
+                              Width: =120

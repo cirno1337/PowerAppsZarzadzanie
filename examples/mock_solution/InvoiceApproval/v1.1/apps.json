@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Invoice Approval App",
+    "type": "canvas",
+    "screens": [
+      {
+        "name": "HomeScreen",
+        "controls_summary": "Gallery of pending invoices with Approve, Reject, and Escalate buttons"
+      },
+      {
+        "name": "DetailScreen",
+        "controls_summary": "Invoice detail view with approve/reject actions and a comments field"
+      },
+      {
+        "name": "EscalationScreen",
+        "controls_summary": "List of escalated invoices awaiting manager attention"
+      }
+    ]
+  }
+]

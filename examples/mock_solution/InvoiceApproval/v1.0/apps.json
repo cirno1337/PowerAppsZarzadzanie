@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Invoice Approval App",
+    "type": "canvas",
+    "screens": [
+      {
+        "name": "HomeScreen",
+        "controls_summary": "Gallery of pending invoices with Approve and Reject buttons"
+      },
+      {
+        "name": "DetailScreen",
+        "controls_summary": "Invoice detail view with approve/reject actions and a comments field"
+      }
+    ]
+  }
+]

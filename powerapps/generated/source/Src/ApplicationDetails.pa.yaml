@@ -1,0 +1,177 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  ApplicationDetails:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_ApplicationDetails:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_ApplicationDetails:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - BackButton_ApplicationDetails:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(ApplicationsScreen, ScreenTransition.Cover)
+                        Text: ="< Applications"
+                        Width: =140
+                  - HeaderTitle_ApplicationDetails:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Application Details"
+                        Width: =300
+            - MainContainer1_ApplicationDetails:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - TitleLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =20
+                        Text: =SelectedApplication.Title
+                  - SolutionLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Solution: " & SelectedApplication.SolutionName
+                  - EnvironmentLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Environment: " & SelectedApplication.Environment.Value
+                  - VersionLabel_ApplicationDetails:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Current version: " & SelectedApplication.CurrentVersion
+                  - StatusLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Height: =25
+                        Text: |-
+                          ="Documentation status: " & SelectedApplication.DocumentationStatus.Value
+                  - ActionsContainer:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Height: =50
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                      Children:
+                        - RequestDocButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(RequestDocumentation, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Request Documentation"
+                              Visible: =SelectedApplication.DocumentationStatus.Value = "NOT_DOCUMENTED"
+                              Width: =200
+                        - RequestUpdateButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(RequestUpdate, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Request Update"
+                              Visible: =SelectedApplication.DocumentationStatus.Value <> "NOT_DOCUMENTED"
+                        - AnalyzeButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Patch(
+                                    DocumentationJobs,
+                                    Defaults(DocumentationJobs),
+                                    {
+                                        Title: SelectedApplication.Title & " - ANALYZE_SOLUTION - " & Text(Now(), "yyyy-mm-dd-hh-mm-ss"),
+                                        Application: {Id: SelectedApplication.ID, Value: SelectedApplication.Title},
+                                        Action: {Value: "ANALYZE_SOLUTION", Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        RequestedAt: Now(),
+                                        Status: {Value: "PENDING", Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        RetryCount: 0
+                                    }
+                                );
+                                Notify("Analysis requested.", NotificationType.Success)
+                              Text: ="Analyze current version"
+                              Width: =200
+                  - HistoryContainer:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Height: =50
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                      Children:
+                        - VersionHistoryButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(VersionHistory, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Version History"
+                        - JobHistoryButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(JobHistory, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Job History"

@@ -1,0 +1,127 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  ApplicationsScreen:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_Applications:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_Applications:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - BackButton_Applications:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(Screen1, ScreenTransition.Cover)
+                        Text: ="< Dashboard"
+                        Width: =140
+                  - HeaderTitle_Applications:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Applications"
+                        Width: =300
+                  - RegisterButton:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        OnSelect: =Navigate(RegisterApplication, ScreenTransition.Cover)
+                        Text: ="Register Application"
+                        Width: =180
+            - MainContainer1_Applications:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =12
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - SearchInput:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        Default: =""
+                        HintText: ="Search by title or solution name"
+                  - ApplicationsGallery:
+                      Control: Gallery@2.15.0
+                      Variant: BrowseLayout_Vertical_TwoTextOneImageVariant_ver5.0
+                      Properties:
+                        Height: =500
+                        Items: =SortByColumns(Filter(Applications, Active = true, StartsWith(Title, SearchInput.Text) Or StartsWith(SolutionName, SearchInput.Text)), "Title", "Ascending")
+                        TemplateSize: =70
+                      Children:
+                        - RowTitleLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              FontWeight: =FontWeight.Semibold
+                              Height: =25
+                              Text: =ThisItem.Title
+                              Width: =400
+                              X: =10
+                              Y: =5
+                        - RowStatusLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Height: =25
+                              Size: =11
+                              Text: ="v" & ThisItem.CurrentVersion & " - " & ThisItem.DocumentationStatus.Value
+                              Width: =400
+                              X: =10
+                              Y: =30
+                        - RowOpenButton:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(ApplicationDetails, ScreenTransition.Cover, {SelectedApplication: ThisItem})
+                              Text: ="Open"
+                              Width: =100
+                              X: =450
+                              Y: =10

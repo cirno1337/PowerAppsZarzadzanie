@@ -1,0 +1,22 @@
+[project]
+name = "power-platform-documentation-manager"
+version = "0.1.0"
+description = "Internal worker for documenting and versioning Power Platform applications (mock-first, offline-developable)."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+# Only needed to run scripts/provision_sharepoint_graph.py once against a
+# real tenant -- not a runtime dependency of the worker itself.
+provisioning = ["msal>=1.28", "requests>=2.31"]
+# Only needed when PPDM_COPILOT_MODE=real, PPDM_SHAREPOINT_MODE=real, or
+# PPDM_POWERPLATFORM_MODE=real (Direct Line / Microsoft Graph HTTP calls,
+# canvas app YAML parsing). All imported lazily at the point of use, never
+# at module import time -- the mock/human_review paths have zero
+# dependencies regardless of whether these are installed.
+real = ["requests>=2.31", "msal>=1.28", "pyyaml>=6.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["worker/tests"]
+pythonpath = ["."]

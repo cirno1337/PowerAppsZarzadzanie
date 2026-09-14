@@ -1,0 +1,18 @@
+{
+  "listName": "DocumentationVersions",
+  "description": "Version history: one row per generated documentation version per application.",
+  "columns": [
+    {"name": "Title", "type": "Single line of text", "required": true, "notes": "e.g. 'Invoice Approval v1.1' — computed by the worker for readability."},
+    {"name": "Application", "type": "Lookup", "required": true, "lookupList": "Applications", "lookupField": "Title"},
+    {"name": "Version", "type": "Single line of text", "required": true, "notes": "e.g. '1.1' — see worker/versioning/version.py for the numbering policy."},
+    {"name": "PreviousVersion", "type": "Single line of text", "required": false},
+    {"name": "ChangeSummary", "type": "Multiple lines of text", "required": true, "plainText": false, "notes": "Markdown; rendered by worker/documentation/generator.py render_change_summary()."},
+    {"name": "DocumentationImpact", "type": "Single line of text", "required": true, "notes": "e.g. 'technical=HIGH user=HIGH' — see worker/diff/impact.py."},
+    {"name": "SnapshotPath", "type": "Single line of text", "required": true, "notes": "Path/URL to snapshot.json in the document library."},
+    {"name": "DiffPath", "type": "Single line of text", "required": false},
+    {"name": "TechnicalDocumentationPath", "type": "Single line of text", "required": true},
+    {"name": "UserDocumentationPath", "type": "Single line of text", "required": true},
+    {"name": "CreatedBy", "type": "Person or Group", "required": true, "notes": "The user who requested the job that produced this version, not necessarily the SharePoint item author."}
+  ],
+  "builtInColumnsUsed": ["ID", "Created", "Author"]
+}
