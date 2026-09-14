@@ -1,0 +1,125 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  RequestUpdate:
+    Properties:
+      Fill: =RGBA(255, 255, 255, 1)
+    Children:
+      - ScreenContainer1_RequestUpdate:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(245, 245, 245, 1)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =16
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Width: =Parent.Width
+          Children:
+            - HeaderContainer1_RequestUpdate:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  FillPortions: =0
+                  Height: =75
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - HeaderTitle_RequestUpdate:
+                      Control: Label@2.5.1
+                      Properties:
+                        FontWeight: =FontWeight.Semibold
+                        Size: =16
+                        Text: ="Request Documentation Update"
+                        Width: =400
+            - MainContainer1_RequestUpdate:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =RGBA(255, 255, 255, 1)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =10
+                  LayoutMinHeight: =16
+                  LayoutMinWidth: =16
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                Children:
+                  - ConfirmLabel_RequestUpdate:
+                      Control: Label@2.5.1
+                      Properties:
+                        Size: =16
+                        Text: ="Request a documentation update for " & SelectedApplication.Title & "?"
+                  - ButtonsContainer_RequestUpdate:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Height: =50
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                      Children:
+                        - ConfirmButton_RequestUpdate:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Patch(
+                                    DocumentationJobs,
+                                    Defaults(DocumentationJobs),
+                                    {
+                                        Title: SelectedApplication.Title & " - UPDATE_DOCUMENTATION - " & Text(Now(), "yyyy-mm-dd-hh-mm-ss"),
+                                        Application: {Id: SelectedApplication.ID, Value: SelectedApplication.Title},
+                                        Action: {Value: "UPDATE_DOCUMENTATION", Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        RequestedBy: {
+                                            '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
+                                            Claims: "i:0#.f|membership|" & Lower(User().Email),
+                                            Department: "",
+                                            DisplayName: User().FullName,
+                                            Email: User().Email,
+                                            JobTitle: "",
+                                            Picture: ""
+                                        },
+                                        RequestedAt: Now(),
+                                        Status: {Value: "PENDING", Id: 0, '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedChoice"},
+                                        RetryCount: 0
+                                    }
+                                );
+                                Navigate(ApplicationDetails, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Confirm"
+                              Width: =120
+                        - CancelButton_RequestUpdate:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              OnSelect: |-
+                                =Navigate(ApplicationDetails, ScreenTransition.Cover, {SelectedApplication: SelectedApplication})
+                              Text: ="Cancel"
+                              Width: =120
